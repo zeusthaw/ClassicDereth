@@ -603,8 +603,6 @@ void CClientEvents::SpendSkillCredits(STypeSkill key, DWORD credits)
 	}
 
 	m_pPlayer->GiveSkillAdvancementClass(key, TRAINED_SKILL_ADVANCEMENT_CLASS);
-	m_pPlayer->m_Qualities.SetSkillLevel(key, 5);
-	m_pPlayer->NotifySkillStatUpdated(key);
 
 	m_pPlayer->m_Qualities.SetInt(AVAILABLE_SKILL_CREDITS_INT, unassignedCredits - costToRaise);
 	m_pPlayer->NotifyIntStatUpdated(AVAILABLE_SKILL_CREDITS_INT);
@@ -1845,6 +1843,7 @@ void CClientEvents::ProcessEvent(BinaryReader *pReader)
 			}
 		case 0x0035: //Use Item Ex
 			{
+				//SendText("Use extended not implemented yet.", 9);
 				DWORD dwSourceID = pReader->ReadDWORD();
 				DWORD dwDestID = pReader->ReadDWORD();
 				if (pReader->GetLastError()) break;

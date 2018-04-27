@@ -588,10 +588,6 @@ void CClient::CreateCharacter(BinaryReader *pReader)
 				for (DWORD i = 0; i < cg.numSkills; i++)
 				{
 					weenie->m_Qualities.SetSkillAdvancementClass((STypeSkill)i, cg.skillAdvancementClasses[i]);
-					if (cg.skillAdvancementClasses[i] == SKILL_ADVANCEMENT_CLASS::SPECIALIZED_SKILL_ADVANCEMENT_CLASS)
-						weenie->m_Qualities.SetSkillLevel((STypeSkill)i, 10);
-					else if (cg.skillAdvancementClasses[i] == SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
-						weenie->m_Qualities.SetSkillLevel((STypeSkill)i, 5);
 				}
 				
 				weenie->m_Qualities.SetInt(AGE_INT, 0);
@@ -670,8 +666,6 @@ void CClient::CreateCharacter(BinaryReader *pReader)
 				weenie->m_Qualities._create_list->clear(); //Clear the create list as we don't want what's in it.
 				g_pWorld->CreateEntity(weenie); //Briefly add the weenie to the world so we don't get errors when adding the starting gear.
 
-				weenie->GiveXP(g_pConfig->OverrideStartingXP()); //Add additional XP Override at character creation 
-
 				//add starter gear
 				GenerateStarterGear(weenie, cg, scg);
 
@@ -731,7 +725,7 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 	weenie->SpawnWielded(cg.footwearStyle, scg->mFootwearList, cg.footwearColor, scg->mClothingColorsList, cg.footwearShade);
 
 	//weenie->m_Qualities.SetInt(COIN_VALUE_INT, GetAccessLevel() >= ADMIN_ACCESS ? 500000000 : 10000);
-	weenie->SpawnInContainer(W_COINSTACK_CLASS, 500);
+	weenie->SpawnInContainer(W_COINSTACK_CLASS, 5000);
 	weenie->SpawnInContainer(W_TUTORIALBOOK_CLASS, 1);
 
 	if (cg.skillAdvancementClasses[ALCHEMY_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
@@ -795,7 +789,9 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 		if (cg.skillAdvancementClasses[SWORD_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
 			weenie->SpawnInContainer(W_NEWBIESWORDSHORT_CLASS, 1);
 		if (cg.skillAdvancementClasses[THROWN_WEAPON_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
-			weenie->SpawnInContainer(W_NEWBIEDART_CLASS, 15);
+			weenie->SpawnInContainer(W_NEWBIEDART_CLASS, 50); // Increase Amnt from 15 to 50
+		if (cg.skillAdvancementClasses[UNARMED_COMBAT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
+			weenie->SpawnInContainer(W_CESTUS_CLASS, 1);
 
 		if (cg.skillAdvancementClasses[CREATURE_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
 			cg.skillAdvancementClasses[ITEM_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
@@ -829,7 +825,9 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 		if (cg.skillAdvancementClasses[SWORD_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
 			weenie->SpawnInContainer(W_NEWBIESIMI_CLASS, 1);
 		if (cg.skillAdvancementClasses[THROWN_WEAPON_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
-			weenie->SpawnInContainer(W_NEWBIEDART_CLASS, 15);
+			weenie->SpawnInContainer(W_NEWBIEDART_CLASS, 50); // Increase Amnt from 15 to 50
+		if (cg.skillAdvancementClasses[UNARMED_COMBAT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
+			weenie->SpawnInContainer(W_CESTUS_CLASS, 1);
 
 		if (cg.skillAdvancementClasses[CREATURE_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
 			cg.skillAdvancementClasses[ITEM_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
@@ -863,7 +861,9 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 		if (cg.skillAdvancementClasses[SWORD_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
 			weenie->SpawnInContainer(W_NEWBIEYAOJI_CLASS, 1);
 		if (cg.skillAdvancementClasses[THROWN_WEAPON_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
-			weenie->SpawnInContainer(W_NEWBIESHURIKEN_CLASS, 15);
+			weenie->SpawnInContainer(W_NEWBIESHURIKEN_CLASS, 50);  // Increase Amnt from 15 to 50
+		if (cg.skillAdvancementClasses[UNARMED_COMBAT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
+			weenie->SpawnInContainer(W_CESTUS_CLASS, 1);
 
 		if (cg.skillAdvancementClasses[CREATURE_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
 			cg.skillAdvancementClasses[ITEM_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS ||
@@ -876,6 +876,9 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 
 	weenie->SpawnInContainer(W_SACK_CLASS, 1);
 	weenie->SpawnInContainer(W_CALLINGSTONE_CLASS, 1);
+	weenie->SpawnInContainer(300001, 1);
+	
+
 
 	CContainerWeenie *sack = NULL;
 	for (auto pack : weenie->m_Packs)
@@ -917,16 +920,19 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 		sack->SpawnInContainer(W_HYSSOP_CLASS, 10);
 		sack->SpawnInContainer(W_ASHWOODTALISMAN_CLASS, 3);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(BloodDrinker1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMQUICKSILVER_CLASS, 10);
 		sack->SpawnInContainer(W_TURQUOISE_CLASS, 10);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(Impenetrability1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMCOBALT_CLASS, 10);
 		sack->SpawnInContainer(W_ONYX_CLASS, 10);
 	}
 	if (cg.skillAdvancementClasses[ITEM_ENCHANTMENT_SKILL] >= SKILL_ADVANCEMENT_CLASS::SPECIALIZED_SKILL_ADVANCEMENT_CLASS)
 	{
+		//Spell//
 		weenie->m_Qualities.AddSpell(SwiftKiller1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMSTIBNITE_CLASS, 10);
 	}
@@ -935,12 +941,14 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 	{
 		sack->SpawnInContainer(W_SCARABLEAD_CLASS, 3);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(ArmorOther1_SpellID);
 		sack->SpawnInContainer(W_WORMWOOD_CLASS, 10);
 		sack->SpawnInContainer(W_ONYX_CLASS, 10);
 		sack->SpawnInContainer(W_ALCHEMCOBALT_CLASS, 10);
 		sack->SpawnInContainer(W_EBONYTALISMAN_CLASS, 3);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(HealSelf1_SpellID);
 		sack->SpawnInContainer(W_HYSSOP_CLASS, 10);
 		sack->SpawnInContainer(W_AMBER_CLASS, 10);
@@ -949,6 +957,7 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 	}
 	if (cg.skillAdvancementClasses[LIFE_MAGIC_SKILL] >= SKILL_ADVANCEMENT_CLASS::SPECIALIZED_SKILL_ADVANCEMENT_CLASS)
 	{
+		//Spell//
 		weenie->m_Qualities.AddSpell(RejuvenationOther1_SpellID);
 		sack->SpawnInContainer(W_MUGWORT_CLASS, 10);
 		sack->SpawnInContainer(W_ALCHEMCINNABAR_CLASS, 10);
@@ -957,898 +966,25 @@ void CClient::GenerateStarterGear(CWeenieObject *weenieObject, ACCharGenResult c
 
 	if (cg.skillAdvancementClasses[WAR_MAGIC_SKILL] >= SKILL_ADVANCEMENT_CLASS::TRAINED_SKILL_ADVANCEMENT_CLASS)
 	{
+		//Base Spell Components//
 		sack->SpawnInContainer(W_SCARABLEAD_CLASS, 3);
 		sack->SpawnInContainer(W_HAWTHORN_CLASS, 10);
 		sack->SpawnInContainer(W_ONYX_CLASS, 10);
 		sack->SpawnInContainer(W_BIRCHTALISMAN_CLASS, 3);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(FlameBolt1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMTURPETH_CLASS, 10);
 
+		//Spell//
 		weenie->m_Qualities.AddSpell(ForceBolt1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMREALGAR_CLASS, 10);
 	}
 	if (cg.skillAdvancementClasses[WAR_MAGIC_SKILL] >= SKILL_ADVANCEMENT_CLASS::SPECIALIZED_SKILL_ADVANCEMENT_CLASS)
 	{
+		//Spell//
 		weenie->m_Qualities.AddSpell(LightningBolt1_SpellID);
 		sack->SpawnInContainer(W_ALCHEMCOBALT_CLASS, 10);
-	}
-
-	if (g_pConfig->EnableSpellFociStarterPack())
-	{
-		weenie->SpawnInContainer(W_PACKCREATUREESSENCE_CLASS, 1);
-		weenie->SpawnInContainer(W_PACKITEMESSENCE_CLASS, 1);
-		weenie->SpawnInContainer(W_PACKLIFEESSENCE_CLASS, 1);
-		weenie->SpawnInContainer(W_PACKWARESSENCE_CLASS, 1);
-
-		weenie->SpawnInContainer(W_TAPERPRISMATIC_CLASS, 25);
-	}
-
-	if(g_pConfig->PrimeNewCharacterSpellbook() > 0)
-	{
-		weenie->SpawnInContainer(W_SCARABLEAD_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther1_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther1_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther1_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther1_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther1_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth1_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina1_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana1_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther1_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther1_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther1_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther1_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther1_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther1_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf1_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf1_SpellID);
-		
-		weenie->m_Qualities.AddSpell(FealtySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf1_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf1_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker1_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker1_SpellID);
-		weenie->m_Qualities.AddSpell(Defender1_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller1_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability1_SpellID);
-		weenie->m_Qualities.AddSpell(Bladebane1_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane1_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane1_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane1_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane1_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt1_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc1_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade1_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc1_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave1_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc1_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt1_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc1_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt1_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc1_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc1_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc1_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak1_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 1)
-	{
-		weenie->SpawnInContainer(W_SCARABIRON_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther2_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther2_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther2_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther2_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther2_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth2_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina2_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana2_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther2_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther2_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther2_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther2_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther2_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther2_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf2_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf2_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf2_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker2_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker2_SpellID);
-		weenie->m_Qualities.AddSpell(Defender2_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller2_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability2_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane2_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane2_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane2_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane2_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane2_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt2_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc2_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade2_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc2_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave2_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc2_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt2_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc2_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt2_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc2_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc2_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc2_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak2_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 2)
-	{
-		weenie->SpawnInContainer(W_SCARABCOPPER_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther3_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther3_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther3_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther3_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther3_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth3_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina3_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana3_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther3_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther3_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther3_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther3_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther3_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther3_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf3_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf3_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf3_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker3_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker3_SpellID);
-		weenie->m_Qualities.AddSpell(Defender3_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller3_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability3_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane3_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane3_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane3_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane3_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane3_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt3_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc3_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade3_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc3_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave3_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc3_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt3_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc3_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt3_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc3_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc3_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc3_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak3_SpellID);
-
-		weenie->m_Qualities.AddSpell(PortalRecall_SpellID);
-		weenie->m_Qualities.AddSpell(PortalTieRecall1_SpellID);
-		weenie->m_Qualities.AddSpell(PortalTieRecall2_SpellID);
-		weenie->m_Qualities.AddSpell(LifestoneRecall1_SpellID);
-
-		weenie->m_Qualities.AddSpell(PortalTie1_SpellID);
-		weenie->m_Qualities.AddSpell(PortalTie2_SpellID);
-		weenie->m_Qualities.AddSpell(LifestoneTie1_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 3)
-	{
-		weenie->SpawnInContainer(W_SCARABSILVER_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther4_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther4_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther4_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther4_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther4_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth4_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina4_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana4_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther4_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther4_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther4_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther4_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther4_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther4_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf4_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf4_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf4_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker4_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker4_SpellID);
-		weenie->m_Qualities.AddSpell(Defender4_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller4_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability4_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane4_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane4_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane4_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane4_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane4_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt4_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc4_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade4_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc4_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave4_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc4_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt4_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc4_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt4_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc4_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc4_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc4_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak4_SpellID);
-
-		weenie->m_Qualities.AddSpell(SummonPortal1_SpellID);
-		weenie->m_Qualities.AddSpell(SummonSecondPortal1_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 4)
-	{
-		weenie->SpawnInContainer(W_SCARABGOLD_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther5_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther5_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther5_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther5_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther5_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth5_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina5_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana5_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther5_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther5_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther5_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther5_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther5_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther5_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf5_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf5_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf5_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker5_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker5_SpellID);
-		weenie->m_Qualities.AddSpell(Defender5_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller5_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability5_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane5_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane5_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane5_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane5_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane5_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt5_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc5_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade5_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc5_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave5_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc5_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt5_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc5_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt5_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc5_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc5_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc5_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak5_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 5)
-	{
-		weenie->SpawnInContainer(W_SCARABPYREAL_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther6_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther6_SpellID);
-
-		weenie->m_Qualities.AddSpell(HealSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(HealOther6_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeOther6_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther6_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth6_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina6_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana6_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther6_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther6_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther6_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther6_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther6_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther6_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf6_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossBowMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf6_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf6_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker6_SpellID);
-		weenie->m_Qualities.AddSpell(HeartSeeker6_SpellID);
-		weenie->m_Qualities.AddSpell(Defender6_SpellID);
-		weenie->m_Qualities.AddSpell(SwiftKiller6_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability6_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane6_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane6_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane6_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane6_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane6_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt6_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc6_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBlade6_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc6_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(ShockWave6_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc6_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt6_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc6_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt6_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc6_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc6_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBolt6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc6_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak6_SpellID);
-	}
-	if (g_pConfig->PrimeNewCharacterSpellbook() > 6)
-	{
-		weenie->SpawnInContainer(W_SCARABPLATINUM_CLASS, 5);
-
-		weenie->m_Qualities.AddSpell(ArmorSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(BladeProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(FireProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ColdProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidProtectionSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(LightningProtectionSelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImperilOther7_SpellID);
-		weenie->m_Qualities.AddSpell(BladeVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(FireVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(ColdVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidVulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(LightningVulnerabilityOther7_SpellID);
-
-		weenie->m_Qualities.AddSpell(healself7_SpellID);
-		weenie->m_Qualities.AddSpell(healother7_SpellID);
-		weenie->m_Qualities.AddSpell(RevitalizeSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(Revitalizeother7_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ManaBoostOther7_SpellID);
-
-		weenie->m_Qualities.AddSpell(StaminatoManaSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(HealthtoManaSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(StaminatoHealthSelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(DrainHealth7_SpellID);
-		weenie->m_Qualities.AddSpell(DrainStamina7_SpellID);
-		weenie->m_Qualities.AddSpell(DrainMana7_SpellID);
-
-		weenie->m_Qualities.AddSpell(HarmOther7_SpellID);
-		weenie->m_Qualities.AddSpell(EnfeebleOther7_SpellID);
-		weenie->m_Qualities.AddSpell(ManaDrainOther7_SpellID);
-
-		weenie->m_Qualities.AddSpell(RegenerationSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(RejuvenationSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ManaRenewalSelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(MagicYieldOther7_SpellID);
-		weenie->m_Qualities.AddSpell(VulnerabilityOther7_SpellID);
-		weenie->m_Qualities.AddSpell(DefenselessnessOther7_SpellID);
-
-		weenie->m_Qualities.AddSpell(StrengthSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(EnduranceSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(CoordinationSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(QuicknessSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(FocusSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(WillpowerSelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(CreatureEnchantmentMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(LifeMagicMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ItemEnchantmentMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(WarMagicMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ManaMasterySelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(ArcaneEnlightenmentSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(HealingMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(SprintSelf7_SpellID);
-		weenie->m_Qualities.AddSpell(JumpingMasterySelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(ImpregnabilitySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(InvulnerabilitySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(MagicResistanceSelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(FealtySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(LeadershipMasterySelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(SwordMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(AxeMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(MaceMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(SpearMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(StaffMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(DaggerMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(UnarmedCombatMasterySelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(CrossbowMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(BowMasterySelf7_SpellID);
-		weenie->m_Qualities.AddSpell(ThrownWeaponMasterySelf7_SpellID);
-
-		weenie->m_Qualities.AddSpell(BloodDrinker7_SpellID);
-		weenie->m_Qualities.AddSpell(Heartseeker7_SpellID);
-		weenie->m_Qualities.AddSpell(Defender7_SpellID);
-		weenie->m_Qualities.AddSpell(Swiftkiller7_SpellID);
-
-		weenie->m_Qualities.AddSpell(Impenetrability7_SpellID);
-		weenie->m_Qualities.AddSpell(BladeBane7_SpellID);
-		weenie->m_Qualities.AddSpell(BludgeonBane7_SpellID);
-		weenie->m_Qualities.AddSpell(PiercingBane7_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBane7_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBane7_SpellID);
-		weenie->m_Qualities.AddSpell(LightningBane7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidBane7_SpellID);
-
-		weenie->m_Qualities.AddSpell(ForceBolt7_SpellID);
-		weenie->m_Qualities.AddSpell(ForceArc7_SpellID);
-		weenie->m_Qualities.AddSpell(ForceStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(Whirlingblade7_SpellID);
-		weenie->m_Qualities.AddSpell(BladeArc7_SpellID);
-		weenie->m_Qualities.AddSpell(WhirlingBladeStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(Shockwave7_SpellID);
-		weenie->m_Qualities.AddSpell(ShockArc7_SpellID);
-		weenie->m_Qualities.AddSpell(ShockwaveStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(FlameBolt7_SpellID);
-		weenie->m_Qualities.AddSpell(FlameArc7_SpellID);
-		weenie->m_Qualities.AddSpell(FlameStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(FrostBolt7_SpellID);
-		weenie->m_Qualities.AddSpell(FrostArc7_SpellID);
-		weenie->m_Qualities.AddSpell(FrostStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStream7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidArc7_SpellID);
-		weenie->m_Qualities.AddSpell(AcidStreak7_SpellID);
-		weenie->m_Qualities.AddSpell(Lightningbolt7_SpellID);
-		weenie->m_Qualities.AddSpell(LightningArc7_SpellID);
-		weenie->m_Qualities.AddSpell(LightningStreak7_SpellID);
 	}
 
 	weenie->RecalculateCoinAmount();
