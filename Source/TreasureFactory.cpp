@@ -1727,12 +1727,184 @@ void CTreasureFactory::MutateMeleeWeapon(CWeenieObject *newItem, CWieldTier *wie
 				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
 				newItem->m_Qualities.SetString(NAME_STRING, "Lightning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
 				break;
+
+
 			}
 		}
 	}
 }
 
 void CTreasureFactory::MutateMissileWeapon(CWeenieObject *newItem, CWieldTier *wieldTier, sItemCreationInfo &creationInfo, CTreasureTier *tier, CTreasureProfileCategory *category, CItemTreasureProfileEntry *entry)
+{
+
+	newItem->m_Qualities.SetFloat(DAMAGE_MOD_FLOAT, round(newItem->InqFloatQuality(DAMAGE_MOD_FLOAT, 1.0, TRUE) + getRandomDouble(wieldTier->minDamageModBonus, wieldTier->maxDamageModBonus, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 2));
+	if (wieldTier->slowSpeedMod > 0 && wieldTier->fastSpeedMod > 0)
+	{
+		int weaponTime = newItem->InqIntQuality(WEAPON_TIME_INT, 50, TRUE);
+		double weaponTimeMod = getRandomDouble(wieldTier->fastSpeedMod, wieldTier->slowSpeedMod, eRandomFormula::favorHigh, 2, creationInfo.qualityModifier);
+		newItem->m_Qualities.SetInt(WEAPON_TIME_INT, round(weaponTime * weaponTimeMod));
+
+		if (!entry->elementalVariants.empty())
+		{
+			if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
+			{
+				int variantId = entry->elementalVariants[getRandomNumberExclusive((int)entry->elementalVariants.size())];
+
+				CWeenieDefaults *weenieDefs = g_pWeenieFactory->GetWeenieDefaults(variantId);
+
+				if (weenieDefs == NULL)
+					return;
+
+				int elementalType;
+				weenieDefs->m_Qualities.InqInt(DAMAGE_TYPE_INT, elementalType, TRUE);
+
+				DWORD setup;
+				if (weenieDefs->m_Qualities.InqDataID(SETUP_DID, setup))
+					newItem->m_Qualities.SetDataID(SETUP_DID, setup);
+
+				int elementalDamage = getRandomNumber(wieldTier->minElementalDamageBonus, wieldTier->maxElementalDamageBonus, eRandomFormula::favorMid, 2, 0);
+				if (elementalDamage > 0)
+				{
+					elementalType = getRandomNumber(4, 7);
+					if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
+						elementalType = getRandomNumber(1, 3);
+					newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+
+					switch (elementalType)
+					{
+					case acid:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
+						newItem->m_Qualities.SetString(NAME_STRING, "Acid " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31799) //Acid Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559669);
+						else if
+							(weenieDefs->m_WCID == 28235) //Acid Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559029),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31806), //Acid XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559665);
+						break;
+					case cold:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
+						newItem->m_Qualities.SetString(NAME_STRING, "Frost " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31803) //Cold Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559667);
+						else if
+							(weenieDefs->m_WCID == 28239) //Cold Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559026),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31810), //Cold XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559663);
+						break;
+					case fire:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
+						newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31802) //Fire Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559668);
+						else if
+							(weenieDefs->m_WCID == 28238) //Fire Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559025),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31809), //FIre XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559664);
+						break;
+					case lightning:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Lightning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 48233) //Light Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559666);
+						else if
+							(weenieDefs->m_WCID == 28237) //Light Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559031),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31808), //Light XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559662);
+						break;
+					case bludgeoning:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Bludgeoning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31800) //Bludge Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559689);
+						else if
+							(weenieDefs->m_WCID == 28236) //Bludge Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559030),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31807), //Bludge XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559692);
+						break;
+					case piercing:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Piercing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31804) //pierce Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559690);
+						else if
+							(weenieDefs->m_WCID == 28240) //pierce Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559027),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31811), //pierce XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559693);
+						break;
+					case slashing:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Slashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31798) //Slash Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559688);
+						else if
+							(weenieDefs->m_WCID == 28241) //Slash Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 3559028),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						else
+							(weenieDefs->m_WCID == 31805), //Slash XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559691);
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+						
+					
+				
+			
+
+/* void CTreasureFactory::MutateMissileWeapon(CWeenieObject *newItem, CWieldTier *wieldTier, sItemCreationInfo &creationInfo, CTreasureTier *tier, CTreasureProfileCategory *category, CItemTreasureProfileEntry *entry)
 {
 	newItem->m_Qualities.SetFloat(DAMAGE_MOD_FLOAT, round(newItem->InqFloatQuality(DAMAGE_MOD_FLOAT, 1.0, TRUE) + getRandomDouble(wieldTier->minDamageModBonus, wieldTier->maxDamageModBonus, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 2));
 
@@ -1800,7 +1972,7 @@ void CTreasureFactory::MutateMissileWeapon(CWeenieObject *newItem, CWieldTier *w
 			}
 		}
 	}
-}
+} */
 
 void CTreasureFactory::MutateCaster(CWeenieObject *newItem, CWieldTier *wieldTier, sItemCreationInfo &creationInfo, CTreasureTier *tier, CTreasureProfileCategory *category, CItemTreasureProfileEntry *entry)
 {
@@ -1842,61 +2014,149 @@ void CTreasureFactory::MutateCaster(CWeenieObject *newItem, CWieldTier *wieldTie
 			break;
 		}
 
-		if (wieldTier->maxManaConversionBonus > 0 && getRandomNumberExclusive(100) < wieldTier->manaConversionBonusChance * 100 * (1 + (creationInfo.qualityModifier * 2)))
+		if (!entry->elementalVariants.empty())
 		{
-			double manaConversionMod = round(getRandomDouble(0, wieldTier->maxManaConversionBonus / 100, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 1);
-			if (manaConversionMod > 0)
-				newItem->m_Qualities.SetFloat(MANA_CONVERSION_MOD_FLOAT, manaConversionMod);
-		}
-
-		if (wieldTier->maxElementalDamageMod > 0)
-		{
-			double elementalDamageMod = round(getRandomDouble(wieldTier->minElementalDamageMod, wieldTier->maxElementalDamageMod, eRandomFormula::favorMid, 2, 0), 2);
-
-			elementalDamageMod = 1.0 + (elementalDamageMod / 100.0);
-
-			eElements elementalType = (eElements)getRandomNumber(4, 7);
 			if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
-				elementalType = (eElements)getRandomNumber(1, 3);
-			newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
-
-			switch ((DAMAGE_TYPE)elementalType)
 			{
-			case DAMAGE_TYPE::ACID_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
-				newItem->m_Qualities.SetString(NAME_STRING, "Searing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::COLD_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
-				newItem->m_Qualities.SetString(NAME_STRING, "Freezing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::FIRE_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
-				newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::ELECTRIC_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Zapping " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::BLUDGEON_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Smashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::PIERCE_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Prickly " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case DAMAGE_TYPE::SLASH_DAMAGE_TYPE:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Slicing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
+				int variantId = entry->elementalVariants[getRandomNumberExclusive((int)entry->elementalVariants.size())];
+
+				CWeenieDefaults *weenieDefs = g_pWeenieFactory->GetWeenieDefaults(variantId);
+
+				if (weenieDefs == NULL)
+					return;
+
+				int elementalType;
+				weenieDefs->m_Qualities.InqInt(DAMAGE_TYPE_INT, elementalType, TRUE);
+
+				DWORD setup;
+				if (weenieDefs->m_Qualities.InqDataID(SETUP_DID, setup))
+					newItem->m_Qualities.SetDataID(SETUP_DID, setup);
+
+				if (wieldTier->maxManaConversionBonus > 0 && getRandomNumberExclusive(100) < wieldTier->manaConversionBonusChance * 100 * (1 + (creationInfo.qualityModifier * 2)))
+				{
+					double manaConversionMod = round(getRandomDouble(0, wieldTier->maxManaConversionBonus / 100, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 1);
+					if (manaConversionMod > 0)
+						newItem->m_Qualities.SetFloat(MANA_CONVERSION_MOD_FLOAT, manaConversionMod);
+				}
+
+				if (wieldTier->maxElementalDamageMod > 0)
+				{
+					double elementalDamageMod = round(getRandomDouble(wieldTier->minElementalDamageMod, wieldTier->maxElementalDamageMod, eRandomFormula::favorMid, 2, 0), 2);
+
+					elementalDamageMod = 1.0 + (elementalDamageMod / 100.0);
+
+					eElements elementalType = (eElements)getRandomNumber(4, 7);
+					if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
+						elementalType = (eElements)getRandomNumber(1, 3);
+					newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+
+					switch ((DAMAGE_TYPE)elementalType)
+					{
+					case DAMAGE_TYPE::ACID_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
+						newItem->m_Qualities.SetString(NAME_STRING, "Searing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29259) //Acid Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559229),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else if
+							(weenieDefs->m_WCID == 27881) //Acid Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 3559024),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						else
+							(weenieDefs->m_WCID == 37224), //Acid Staff
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33560650),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						break;
+					case DAMAGE_TYPE::COLD_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
+						newItem->m_Qualities.SetString(NAME_STRING, "Freezing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29263) //Cold Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559227),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27885), //Cold Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559020),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+
+						break;
+					case DAMAGE_TYPE::FIRE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
+						newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29262) //Fire Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559228),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27884), //Fire Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559021),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						break;
+					case DAMAGE_TYPE::ELECTRIC_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Zapping " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29261) //Light Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559230),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27883), //Light Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559022),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						break;
+					case DAMAGE_TYPE::BLUDGEON_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Smashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29260) //Bludge Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559231),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27882), //Bludge Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559023),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						break;
+					case DAMAGE_TYPE::PIERCE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Prickly " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29264) //Pierce Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559232),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27886), //Pierce Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559019),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						break;
+					case DAMAGE_TYPE::SLASH_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Slicing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29265) //Slash Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559233),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						else
+							(weenieDefs->m_WCID == 27887), //Slash Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559018),
+						    newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						break;
+					}
+				}
 			}
 		}
 	}
