@@ -986,6 +986,16 @@ void CPlayerWeenie::PreSpawnCreate()
 {
 }
 
+struct CompareManaNeeds : public std::binary_function<CWeenieObject*, CWeenieObject*, bool>
+{
+	bool operator()(CWeenieObject* left, CWeenieObject* right)
+	{
+		// comparator for making a min-heap based on remaining mana
+		return ((left->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE) - left->InqIntQuality(ITEM_CUR_MANA_INT, -1, TRUE))
+			> (right->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE) - right->InqIntQuality(ITEM_CUR_MANA_INT, -1, TRUE)));
+	}
+};
+
 int CPlayerWeenie::UseEx(CWeenieObject *pTool, CWeenieObject *pTarget)
 {
 	int toolType = pTool->InqIntQuality(ITEM_TYPE_INT, 0);
@@ -994,9 +1004,10 @@ int CPlayerWeenie::UseEx(CWeenieObject *pTool, CWeenieObject *pTarget)
 	{
 	case TYPE_MANASTONE:
 	{
+		// Merged changes from https://gitlab.com/fourk/gdlenhanced/tree/use_mana_stones_on_self
+		// TODO: move this logic to ManaStone.cpp
 		int targetType = pTarget->InqIntQuality(ITEM_TYPE_INT, 0);
-		if (!(targetType & TYPE_ITEM))
-		{
+		if (!(targetType & TYPE_ITEM) && !(targetType & TYPE_CREATURE)) {
 			SendText(csprintf("That's not a valid target for the %s", pTool->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
 			break;
 		}
@@ -1004,107 +1015,193 @@ int CPlayerWeenie::UseEx(CWeenieObject *pTool, CWeenieObject *pTarget)
 		int manaStoneCurrentMana = pTool->InqIntQuality(ITEM_CUR_MANA_INT, -1, TRUE);
 		double manaStoneDestroyChance = pTool->InqFloatQuality(MANA_STONE_DESTROY_CHANCE_FLOAT, -1, TRUE);
 		double manaStoneEfficiency = pTool->InqFloatQuality(ITEM_EFFICIENCY_FLOAT, -1, TRUE);
-
 		int targetCurrentMana = pTarget->InqIntQuality(ITEM_CUR_MANA_INT, -1, TRUE);
 		int targetMaxMana = pTarget->InqIntQuality(ITEM_MAX_MANA_INT, -1, TRUE);
 
-		if (manaStoneCurrentMana <= 0)
-		{
-			if (targetMaxMana <= 0)
-			{
+		if (manaStoneCurrentMana <= 0) {
+			if (targetType &TYPE_CREATURE) {
+				//player attempting to use an uncharged mana stone on themselves...what do we do
+				SendText("Despite your best efforts, you fail to destroy yourself.", LTT_DEFAULT); // TODO: better text
+				break;
+			}
+			if (targetMaxMana <= 0) {
 				SendText(csprintf("The %s has no mana to drain.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
 				break;
 			}
-			else
-			{
-				if (!pTarget->InqBoolQuality(RETAINED_BOOL, FALSE))
-				{
-					int drainedMana = round(targetCurrentMana * manaStoneEfficiency);
-					pTool->m_Qualities.SetInt(ITEM_CUR_MANA_INT, drainedMana);
-					pTool->m_Qualities.SetInt(UI_EFFECTS_INT, 1);
-					pTool->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
-					pTool->NotifyIntStatUpdated(UI_EFFECTS_INT, false);
-					pTarget->Remove();
-					RecalculateEncumbrance();
 
-					// The Mana Stone drains 4,434 points of mana from the Pocket Watch.
-					// The Pocket Watch is destroyed.
-					SendText(csprintf("The %s drains %s points of mana from the %s.\nThe %s is destroyed.", pTool->GetName().c_str(), FormatNumberString(drainedMana).c_str(), pTarget->GetName().c_str(), pTarget->GetName().c_str()), LTT_DEFAULT);
-				}
-				else
-				{
-					SendText("Retained items can't be drained.", LTT_DEFAULT); //todo: made up message, confirm if it's correct
-					break;
-				}
+			if (!pTarget->InqBoolQuality(RETAINED_BOOL, FALSE)) {
+				int drainedMana = round(targetCurrentMana * manaStoneEfficiency);
+				pTool->m_Qualities.SetInt(ITEM_CUR_MANA_INT, drainedMana);
+				pTool->m_Qualities.SetInt(UI_EFFECTS_INT, 1);
+				pTool->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
+				pTool->NotifyIntStatUpdated(UI_EFFECTS_INT, false);
+				pTarget->Remove();
+				RecalculateEncumbrance();
+
+				// The Mana Stone drains 4,434 points of mana from the Pocket Watch.
+				// The Pocket Watch is destroyed.
+				SendText(csprintf("The %s drains %s points of mana from the %s.\nThe %s is destroyed.", pTool->GetName().c_str(), FormatNumberString(drainedMana).c_str(), pTarget->GetName().c_str(), pTarget->GetName().c_str()), LTT_DEFAULT);
+			}
+			else {
+				SendText("Retained items can't be drained.", LTT_DEFAULT); //todo: made up message, confirm if it's correct
+				break;
 			}
 		}
-		else
-		{
-			//to do: targeting self recharges all equipped items that need mana equally.
-
-			// The Mana Stone gives 26,693 points of mana to the following items: Sparring Pants, Chainmail Tassets, Sollerets, Platemail Gauntlets, Sparring Shirt, Celdon Breastplate, Bracelet, Chainmail Bracers, Veil of Darkness
-			// Your items are fully charged.
-			// 
-			// The Mana Stone gives 3,123 points of mana to the following items: Frigid Bracelet, Silifi of Crimson Night, Tunic, Sleeves of Inexhaustibility, Breeches
-			// You need 3,640 more mana to fully charge your items.
-
-			if (targetMaxMana < 0)
-			{
-				SendText(csprintf("The %s does not require mana.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
-				break;
-			}
-			else if (targetCurrentMana >= targetMaxMana)
-			{
-				SendText(csprintf("The %s is already fully charged.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
-				break;
-			}
-			else
-			{
-				int manaNeeded = targetMaxMana - targetCurrentMana;
-				int remainingMana;
-
-				if (manaStoneCurrentMana >= manaNeeded)
+		else { // mana stone is being emptied, not filled
+			int remainingMana;
+			if (targetType & TYPE_CREATURE) { // manastone being emptied into the user
+				if (pTarget->id != id) {
+					// somehow not using on self. shouldn't be possible with the client. Made up message.
+					SendText(csprintf("You cannot use the %s on other creatures or players.", pTool->GetName().c_str()), LTT_DEFAULT);
+					break;
+				}
+				priority_queue<CWeenieObject*, vector<CWeenieObject*>, CompareManaNeeds > itemsNeedingMana, itemsStillNeedingMana; // MIN heaps sorted by mana deficit
+				for (auto wielded : m_Wielded)
 				{
-					pTarget->m_Qualities.SetInt(ITEM_CUR_MANA_INT, targetMaxMana);
-					pTarget->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
+					unsigned int curMana = wielded->InqIntQuality(ITEM_CUR_MANA_INT, 0, TRUE);
+					unsigned int maxMana = wielded->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE);
+					unsigned int deficit = maxMana - curMana;
+					if (deficit > 0) {
+						itemsNeedingMana.push(wielded);
+					}
+				}
+				if (itemsNeedingMana.empty()) {
+					SendText("None of your items need mana", LTT_DEFAULT); // What's the correct text?
+					break;
+				}
+				int manaToDistribute = manaStoneCurrentMana;
+				int manaDistributed = 0;
+				std::set<CWeenieObject*> objectsReceivingMana; // for the chatmessage at the end
 
-					remainingMana = manaStoneCurrentMana - manaNeeded;
+				while (manaToDistribute > 0 && !(itemsNeedingMana.empty())) {
+					CWeenieObject* itemNeedingLeastMana = itemsNeedingMana.top();
+					int deficit = itemNeedingLeastMana->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE) - itemNeedingLeastMana->InqIntQuality(ITEM_CUR_MANA_INT, 0, TRUE);
+					int manaToApplyToEach = 0;
+					int overflowManaToApply = 0; // when available mana / items_needing_mana is uneven, we give the remainder to whatever is closest to full.
 
-					SendText(csprintf("The %s gives %s mana to the %s.", pTool->GetName().c_str(), FormatNumberString(manaNeeded).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
-					SendText(csprintf("The %s is fully charged.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+					if (deficit * itemsNeedingMana.size() >= manaToDistribute) {
+						manaToApplyToEach = manaToDistribute / itemsNeedingMana.size();
+						overflowManaToApply = manaToDistribute % itemsNeedingMana.size();
+					}
+					else {
+						manaToApplyToEach = deficit;
+					}
+
+					while (!itemsNeedingMana.empty()) {
+						CWeenieObject* item = itemsNeedingMana.top();
+						int itemMaxMana = item->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE);
+						itemsNeedingMana.pop();
+
+						int newManaAmount = item->InqIntQuality(ITEM_CUR_MANA_INT, 0, TRUE) + manaToApplyToEach;
+						manaToDistribute -= manaToApplyToEach;
+						manaDistributed += manaToApplyToEach;
+
+						if (overflowManaToApply > 0) {
+							newManaAmount += overflowManaToApply;
+							manaToDistribute -= overflowManaToApply;
+							manaDistributed += overflowManaToApply;
+							overflowManaToApply = 0;
+							objectsReceivingMana.insert(item);
+						}
+
+						if (newManaAmount < itemMaxMana) {
+							itemsStillNeedingMana.push(item);
+						}
+
+						if (manaToApplyToEach > 0) { // handle case when you use a stone that doesn't even have enough mana to give 1 to each deficit item
+							objectsReceivingMana.insert(item);
+						}
+
+						item->m_Qualities.SetInt(ITEM_CUR_MANA_INT, newManaAmount);
+						item->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false); // todo: is second positional arg correct?
+					}
+
+					itemsNeedingMana.swap(itemsStillNeedingMana);
+				}
+				remainingMana = manaToDistribute;
+				std::stringstream ss;
+				ss << csprintf("The %s gives %s points of mana to the following items: ", pTool->GetName().c_str(), FormatNumberString(manaDistributed).c_str());
+				std::set<CWeenieObject*>::iterator it = objectsReceivingMana.begin();
+				while (it != objectsReceivingMana.end()) {
+					if (it != objectsReceivingMana.begin()) {
+						ss << ", ";
+					}
+					CWeenieObject* item = *it;
+					ss << item->GetName();
+					it++;
+				}
+				SendText(ss.str().c_str(), LTT_DEFAULT);
+				int remainingDeficit = 0;
+				while (!itemsNeedingMana.empty()) {
+					remainingDeficit += (itemsNeedingMana.top()->InqIntQuality(ITEM_MAX_MANA_INT, 0, TRUE) - itemsNeedingMana.top()->InqIntQuality(ITEM_CUR_MANA_INT, 0, TRUE));
+					itemsNeedingMana.pop();
+				}
+				if (remainingDeficit == 0) {
+					SendText("Your items are fully charged.", LTT_DEFAULT);
+				}
+				else {
+					SendText(csprintf("You need %s more mana to fully charge your items.", FormatNumberString(remainingDeficit).c_str()), LTT_DEFAULT);
+				}
+			}
+			else { // manastone being emptied into an item
+
+				if (targetMaxMana <= 0)
+				{
+					SendText(csprintf("The %s does not require mana.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+					break;
+				}
+				else if (targetCurrentMana >= targetMaxMana)
+				{
+					SendText(csprintf("The %s is already fully charged.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+					break;
 				}
 				else
 				{
-					int newManaAmount = targetCurrentMana + manaStoneCurrentMana;
-					int manaStillNeeded = targetMaxMana - newManaAmount;
-					remainingMana = 0;
+					int manaNeeded = targetMaxMana - targetCurrentMana;
 
-					pTarget->m_Qualities.SetInt(ITEM_CUR_MANA_INT, newManaAmount);
-					pTarget->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
 
-					SendText(csprintf("The %s gives %s mana to the %s.", pTool->GetName().c_str(), FormatNumberString(manaStoneCurrentMana).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
-					SendText(csprintf("You need %s more mana to fully charge the %s.", FormatNumberString(manaStillNeeded).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
-				}
-
-				if (manaStoneDestroyChance >= 1.0 || Random::RollDice(0.0, 1.0) <= manaStoneDestroyChance)
-				{
-					SendText(csprintf("The %s is destroyed.", pTool->GetName().c_str()), LTT_DEFAULT);
-					pTool->Remove();
-					RecalculateEncumbrance();
-				}
-				else
-				{
-					pTool->m_Qualities.SetInt(ITEM_CUR_MANA_INT, remainingMana);
-					pTool->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
-
-					if (remainingMana == 0)
+					if (manaStoneCurrentMana >= manaNeeded)
 					{
-						pTool->m_Qualities.SetInt(UI_EFFECTS_INT, 0);
-						pTool->NotifyIntStatUpdated(UI_EFFECTS_INT, false);
+						pTarget->m_Qualities.SetInt(ITEM_CUR_MANA_INT, targetMaxMana);
+						pTarget->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
+
+						remainingMana = manaStoneCurrentMana - manaNeeded;
+
+						SendText(csprintf("The %s gives %s mana to the %s.", pTool->GetName().c_str(), FormatNumberString(manaNeeded).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+						SendText(csprintf("The %s is fully charged.", pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+					}
+					else
+					{
+						int newManaAmount = targetCurrentMana + manaStoneCurrentMana;
+						int manaStillNeeded = targetMaxMana - newManaAmount;
+						remainingMana = 0;
+
+						pTarget->m_Qualities.SetInt(ITEM_CUR_MANA_INT, newManaAmount);
+						pTarget->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
+
+						SendText(csprintf("The %s gives %s mana to the %s.", pTool->GetName().c_str(), FormatNumberString(manaStoneCurrentMana).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
+						SendText(csprintf("You need %s more mana to fully charge the %s.", FormatNumberString(manaStillNeeded).c_str(), pTarget->GetName().c_str()), LTT_DEFAULT); //todo: made up message, confirm if it's correct
 					}
 				}
 			}
+
+			if (manaStoneDestroyChance >= 1.0 || Random::RollDice(0.0, 1.0) <= manaStoneDestroyChance) {
+				SendText(csprintf("The %s is destroyed.", pTool->GetName().c_str()), LTT_DEFAULT);
+				pTool->Remove();
+				RecalculateEncumbrance();
+			}
+			else {
+				pTool->m_Qualities.SetInt(ITEM_CUR_MANA_INT, remainingMana);
+				pTool->NotifyIntStatUpdated(ITEM_CUR_MANA_INT, false);
+
+				if (remainingMana == 0)
+				{
+					pTool->m_Qualities.SetInt(UI_EFFECTS_INT, 0);
+					pTool->NotifyIntStatUpdated(UI_EFFECTS_INT, false);
+				}
+			}
 		}
+
 		break;
 	}
 	default:

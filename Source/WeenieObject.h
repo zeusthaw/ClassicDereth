@@ -188,6 +188,7 @@ public:
 	virtual class CBaseLifestone *AsLifestone() { return NULL; }
 	virtual class CBindStone *AsBindStone() { return NULL; }
 	virtual class CLockpickWeenie *AsLockpick() { return NULL; }
+	virtual class CManaStoneWeenie *AsManaStone() { return NULL; }
 	virtual class CMeleeWeaponWeenie *AsMeleeWeapon() { return NULL; }
 	virtual class CMissileWeenie *AsMissile() { return NULL; }
 	virtual class CMissileLauncherWeenie *AsMissileLauncher() { return NULL; }
