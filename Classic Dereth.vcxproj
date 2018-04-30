@@ -455,6 +455,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\BindStone.cpp" />
+    <ClCompile Include="Source\ManaStone.cpp" />
     <ClCompile Include="Source\PhatSDK\Support\CombatFormulas.cpp" />
     <ClCompile Include="Source\PhatSDK\Support\Random.cpp" />
     <ClCompile Include="Source\PhatSDK\Support\RandomRange.cpp" />
@@ -641,6 +642,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\BindStone.h" />
+    <ClInclude Include="Source\ManaStone.h" />
     <ClInclude Include="Source\PhatSDK\Support\CombatFormulas.h" />
     <ClInclude Include="Source\PhatSDK\Support\Random.h" />
     <ClInclude Include="Source\PhatSDK\Support\RandomRange.h" />

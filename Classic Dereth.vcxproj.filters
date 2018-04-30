@@ -588,6 +588,9 @@
     <ClCompile Include="Source\BindStone.cpp">
       <Filter>Source Files\Objects\Weenie Types</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ManaStone.cpp">
+      <Filter>Source Files\Objects\Weenie Types</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\crcwheel.h">
@@ -1192,6 +1195,9 @@
     </ClInclude>
     <ClInclude Include="Lib\zlib\zlib.h">
       <Filter>Source Files\ZLib</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ManaStone.h">
+      <Filter>Source Files\Objects\Weenie Types</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

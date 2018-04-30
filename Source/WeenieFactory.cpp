@@ -22,6 +22,7 @@
 #include "Healer.h"
 #include "House.h"
 #include "Scroll.h"
+#include "ManaStone.h"
 #include "MeleeWeapon.h"
 #include "Missile.h"
 #include "MissileLauncher.h"
@@ -770,6 +771,11 @@ CWeenieObject *CWeenieFactory::CreateBaseWeenieByType(int weenieType, unsigned i
 		}
 
 	case ManaStone_WeenieType:
+		{
+			weenie = new CManaStoneWeenie();
+			break;
+		}
+
 	case Coin_WeenieType:
 		{
 			weenie = new CWeenieObject();
