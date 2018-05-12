@@ -214,7 +214,6 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 						}
 						else
 						{
-							//player->SendText(csprintf("You cannot untrain %s!", pSkillBase->_name.c_str()), LTT_DEFAULT);
 							DWORD64 xpToAward = skill._pp;
 							skill._pp = 0;
 							skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);

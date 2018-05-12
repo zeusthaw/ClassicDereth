@@ -30,8 +30,7 @@ public:
 	void BeginLogout();
 	void OnLogoutCompleted();
 	void ExitWorld();
-	// Merged from GDLE2 Team https://gitlab.com/Scribble/gdlenhanced/commit/3cf018646aa989931b63beb0781d4e1a62339746 //
-	void ForceLogout();
+
 	void ActionComplete(int error = WERROR_NONE);
 	void SendText(const char *szText, long lColor);
 
