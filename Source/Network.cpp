@@ -426,8 +426,7 @@ void CNetwork::LogoutAll()
 		{
 			if (client->IsAlive() && client->GetEvents())
 			{
-				//Merged from GDLE2 Team https://gitlab.com/Scribble/gdlenhanced/commit/3cf018646aa989931b63beb0781d4e1a62339746 //
-				client->GetEvents()->ForceLogout();
+				client->GetEvents()->BeginLogout();
 			}
 		}
 	}

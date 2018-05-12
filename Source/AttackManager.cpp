@@ -509,7 +509,6 @@ void CMeleeAttackEvent::HandleAttackHook(const AttackCone &cone)
 		{
 			_weenie->NotifyWeenieError(WERROR_STAMINA_TOO_LOW);
 			weaponSkillLevel *= 0.5; //50% penalty to our attack skill when we don't have enough to perform it.
-			
 		}
 	}
 
