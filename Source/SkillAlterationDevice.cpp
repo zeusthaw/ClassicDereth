@@ -72,6 +72,7 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 
 							skill._sac = SPECIALIZED_SKILL_ADVANCEMENT_CLASS;
 							skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);
+							skill._init_level = 10;
 							player->m_Qualities.SetSkill(skillToAlter, skill);
 							player->NotifySkillStatUpdated(skillToAlter);
 							player->SendText(csprintf("You are now specialized in %s!", pSkillBase->_name.c_str()), LTT_ADVANCEMENT);
@@ -115,10 +116,12 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 							skill._sac = UNTRAINED_SKILL_ADVANCEMENT_CLASS;
 							xpToAward = skill._pp;
 							skill._pp = 0;
+							skill._init_level = 0;
 						}
 						else
 						{
 							skill._sac = TRAINED_SKILL_ADVANCEMENT_CLASS;
+							skill._init_level = 5;
 						}
 
 						skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);
@@ -162,6 +165,7 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 									DWORD64 xpToAward = skill._pp;
 									skill._pp = 0;
 									skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);
+									skill._init_level = 5;
 									player->m_Qualities.SetSkill(skillToAlter, skill);
 									player->NotifySkillStatUpdated(skillToAlter);
 
@@ -193,6 +197,7 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 
 							skill._sac = UNTRAINED_SKILL_ADVANCEMENT_CLASS;
 							skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);
+							skill._init_level = 0;
 							player->m_Qualities.SetSkill(skillToAlter, skill);
 							player->NotifySkillStatUpdated(skillToAlter);
 
@@ -213,6 +218,7 @@ int CSkillAlterationDeviceWeenie::Use(CPlayerWeenie *player)
 							DWORD64 xpToAward = skill._pp;
 							skill._pp = 0;
 							skill._level_from_pp = ExperienceSystem::SkillLevelFromExperience(skill._sac, skill._pp);
+							skill._init_level = 5;
 							player->m_Qualities.SetSkill(skillToAlter, skill);
 							player->NotifySkillStatUpdated(skillToAlter);
 

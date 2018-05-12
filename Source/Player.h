@@ -3,9 +3,21 @@
 
 #include "UseManager.h"
 #include "Monster.h"
+#include "Packable.h"
 
 class CClient;
 class BinaryWriter;
+
+class SalvageResult : public PackObj
+{
+public:
+	DECLARE_PACKABLE()
+
+	DWORD material = 0;
+	double workmanship = 0.0;
+	int units = 0;
+};
+
 
 class CPlayerWeenie : public CMonsterWeenie
 {
@@ -46,7 +58,7 @@ public:
 	virtual bool CheckUseRequirements(int index, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget);
 	virtual void PerformUseModifications(int index, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget, CWeenieObject *pCreatedItem);
 	virtual void PerformUseModificationScript(DWORD scriptId, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget, CWeenieObject *pCreatedItem);
-
+	//virtual int CPlayerWeenie::GetMaterialMod(int material);//
 	void PerformSalvaging(DWORD toolId, PackableList<DWORD> items);
 	DWORD MaterialToSalvageBagId(MaterialType material);
 	bool SpawnSalvageBagInContainer(MaterialType material, int amount, int workmanship, int value, int numItems);

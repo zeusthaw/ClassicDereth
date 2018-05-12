@@ -771,11 +771,10 @@ CWeenieObject *CWeenieFactory::CreateBaseWeenieByType(int weenieType, unsigned i
 		}
 
 	case ManaStone_WeenieType:
-		{
-			weenie = new CManaStoneWeenie();
-			break;
+	{
+		weenie = new CManaStoneWeenie();
+		break;
 		}
-
 	case Coin_WeenieType:
 		{
 			weenie = new CWeenieObject();
@@ -952,6 +951,8 @@ void CWeenieFactory::AddWeenieToDestination(CWeenieObject *weenie, CWeenieObject
 	case WieldTreasure_RegenLocationType:
 		if (CMonsterWeenie *creature = parent->AsMonster())
 			creature->SpawnWielded(weenie);
+		else if (CContainerWeenie *container = parent->AsContainer())
+			 container->SpawnInContainer(weenie);
 		break;
 	case Specific_RegenLocationType:
 	case SpecificTreasure_RegenLocationType:
@@ -1007,9 +1008,16 @@ void CWeenieFactory::AddWeenieToDestination(CWeenieObject *weenie, CWeenieObject
 		else
 			pos = profile->pos_val;
 
-		pos.frame.m_origin.z = CalcSurfaceZ(pos.objcell_id, pos.frame.m_origin.x, pos.frame.m_origin.y, false);
+		if ((pos.objcell_id & 0xFFFF) < 0x100) //outdoors
+			 pos.frame.m_origin.z = CalcSurfaceZ(pos.objcell_id, pos.frame.m_origin.x, pos.frame.m_origin.y, false);
 
 		weenie->SetInitialPosition(pos);
+
+		if (!g_pWorld->CreateEntity(weenie))
+			 {
+			LOG(Temp, Normal, TEXT("Failed creating generated spawn %s.\n"), GetWCIDName(profile->type));
+			return;
+			}
 		break;
 	case Shop_RegenLocationType:
 	case ShopTreasure_RegenLocationType:
