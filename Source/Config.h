@@ -51,10 +51,7 @@ public:
 	virtual bool SpawnLandscape() { return m_bSpawnLandscape; }
 	virtual bool SpawnStaticCreatures() { return m_bSpawnStaticCreatures; }
 	virtual bool EverythingUnlocked() { return m_bEverythingUnlocked; }
-
 	virtual bool TownCrierBuffs() { return m_bTownCrierBuffs; }
-	virtual unsigned int TownCrierBuffLevel() { return m_TownCrierBuffLevel; };
-	virtual bool TownCrierBuffBanes() { return m_bTownCrierBuffBanes; }
 
 	virtual bool EnableTeleCommands() { return m_bEnableTeleCommands; }
 	virtual bool EnableXPCommands() { return m_bEnableXPCommands; }
@@ -72,18 +69,6 @@ public:
 
 	virtual bool AutoCreateAccounts() { return m_bAutoCreateAccounts; }
 
-	virtual unsigned int OverrideMaxLevel() { return m_OverrideMaxLevel; };
-	virtual unsigned int OverrideStartingXP() { return m_OverrideStartingXP; };
-	virtual bool DisableUnassignedXPAtMaxLevel() { return m_bDisableUnassignedXPAtMaxLevel; };
-	virtual double VitaeXPMultiplier() { return m_fVitaeXPMultiplier; }
-	
-	virtual unsigned int PKTrophyStartingLevel() { return m_PKTrophyStartingLevel; };
-	virtual bool EnablePKTrophyWithVitae() { return m_bEnablePKTrophyWithVitae; };
-	virtual unsigned int PKTrophyID(int level);
-
-	virtual bool EnableSpellFociStarterPack() { return m_bEnableSpellFociStarterPack; };
-	virtual unsigned int PrimeNewCharacterSpellbook() { return m_PrimeNewCharacterSpellbook; };
-
 	virtual unsigned int MaxDormantLandblocks() { return m_MaxDormantLandblocks; }
 	virtual unsigned int DormantLandblockCleanupTime() { return m_DormantLandblockCleanupTime; }
 
@@ -98,6 +83,8 @@ public:
 	virtual const char *SanamarStartPosition() { return m_SanamarStartPosition.c_str(); }
 
 	virtual int PKRespiteTime() { return m_PKRespiteTime; }
+
+	virtual double SalvageMultiplier() { return m_SalvageMult; }
 
 protected:
 	virtual void PostLoad() override;
@@ -124,10 +111,7 @@ protected:
 	bool m_bSpawnLandscape = true;
 	bool m_bSpawnStaticCreatures = true;
 	bool m_bEverythingUnlocked = true;
-
 	bool m_bTownCrierBuffs = true;
-	unsigned int m_TownCrierBuffLevel = 7;
-	bool m_bTownCrierBuffBanes = true;
 
 	bool m_bEnableTeleCommands = false;
 	bool m_bEnableXPCommands = false;
@@ -162,24 +146,6 @@ protected:
 
 	bool m_bAutoCreateAccounts = true;
 
-	unsigned int m_OverrideMaxLevel = 275;
-	unsigned int m_OverrideStartingXP = 0;
-	bool m_bDisableUnassignedXPAtMaxLevel = false;
-	double m_fVitaeXPMultiplier = 1.0;
-
-	unsigned int m_PKTrophyStartingLevel = 1;
-	bool m_bEnablePKTrophyWithVitae = false;
-	unsigned int m_PKTrophyIDT0 = 0;
-	unsigned int m_PKTrophyIDT1 = 0;
-	unsigned int m_PKTrophyIDT2 = 0;
-	unsigned int m_PKTrophyIDT3 = 0;
-	unsigned int m_PKTrophyIDT4 = 0;
-	unsigned int m_PKTrophyIDT5 = 0;
-	unsigned int m_PKTrophyIDT6 = 0;
-	
-	bool m_bEnableSpellFociStarterPack = false;
-	unsigned int m_PrimeNewCharacterSpellbook = 0;
-
 	unsigned int m_MaxDormantLandblocks = 1000;
 	unsigned int m_DormantLandblockCleanupTime = 1800;
 
@@ -195,6 +161,8 @@ protected:
 	std::string m_SanamarStartPosition;
 
 	int m_PKRespiteTime = 300;
+
+	float m_SalvageMult = 1.0f;
 };
 
 extern CPhatACServerConfig *g_pConfig;

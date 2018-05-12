@@ -344,16 +344,6 @@ void from_json(const nlohmann::json &reader, CTreasureTier &output)
 	}
 }
 
-void from_json(const nlohmann::json &reader, CTreasureType &output)
-{
-	output.tier = reader.value("tier", 0);
-	output.maxTreasureAmount = reader.value("maxTreasureAmount", 0);
-	output.lootChance = reader.value("lootChance", 0.0f);
-	output.maxMundaneAmount = reader.value("maxMundaneAmount", 0);
-	output.mundaneLootChance = reader.value("mundaneLootChance", 0.0f);
-	output.qualityModifier = reader.value("qualityModifier", 0.0f);
-}
-
 DEFINE_UNPACK_JSON(CTreasureProfile)
 {
 	if (HasField(reader, "options"))
@@ -453,16 +443,6 @@ DEFINE_UNPACK_JSON(CTreasureProfile)
 
 		for (auto iter = tempChestTreasureTypeReplacementTable.begin(); iter != tempChestTreasureTypeReplacementTable.end(); ++iter)
 			chestTreasureTypeReplacementTable.emplace(atoi(iter->first.c_str()), iter->second);
-	}
-
-	if (HasField(reader, "treasureTypeOverrides"))
-	{
-		// nlohmann::json doesn't like int keys in maps, so we read as string and convert to int.
-		std::map<std::string, CTreasureType> tempTreasureTypeOverrides;
-		tempTreasureTypeOverrides = reader.at("treasureTypeOverrides").get<std::map<std::string, CTreasureType>>();
-
-		for (auto iter = tempTreasureTypeOverrides.begin(); iter != tempTreasureTypeOverrides.end(); ++iter)
-			treasureTypeOverrides.emplace(atoi(iter->first.c_str()), iter->second);
 	}
 	return true;
 }
@@ -1036,16 +1016,12 @@ int CTreasureFactory::GenerateFromTypeOrWcid(CWeenieObject *parent, int destinat
 
 			ProcessList(entry, 0, creationData);
 		}
-		else if (_TreasureProfile->treasureTypeOverrides.find(treasureTypeOrWcid) != _TreasureProfile->treasureTypeOverrides.end())
-		{
-			CTreasureType *entry = &_TreasureProfile->treasureTypeOverrides.at(treasureTypeOrWcid);
-			return GenerateFromType(entry, parent, destinationType, isRegenLocationType, treasureTypeOrWcid, ptid, shade, profile);
-		}
 		else if (TreasureEntry2 *entry = g_pPortalDataEx->_treasureTableData.GetTreasureGenerationProfile(treasureTypeOrWcid))
 		{
 			//we're instructions for random treasure generation
 
 			//setup some default values
+			eTreasureTypeEntryType entryType;
 			int tierId = entry->_tier;
 			CTreasureTier *tier = &_TreasureProfile->tiers[tierId];
 			if (tier == NULL)
@@ -1060,15 +1036,113 @@ int CTreasureFactory::GenerateFromTypeOrWcid(CWeenieObject *parent, int destinat
 			if (maxMundaneAmount == 1)
 				mundaneLootChance = 1.0f;
 
-			CTreasureType treasureType;
-			treasureType.tier = tierId;
-			treasureType.maxTreasureAmount = maxTreasureAmount;
-			treasureType.lootChance = lootChance;
-			treasureType.maxMundaneAmount = maxMundaneAmount;
-			treasureType.mundaneLootChance = mundaneLootChance;
-			treasureType.qualityModifier = qualityModifier;
+			if (parent->AsCorpse())
+			{
+				//we're a corpse
+				maxTreasureAmount = round(maxTreasureAmount * tier->lootAmountMultiplier);
+				lootChance = tier->lootChance;
+				mundaneLootChance = tier->miscLootChance;
 
-			return GenerateFromType(&treasureType, parent, destinationType, isRegenLocationType, treasureTypeOrWcid, ptid, shade, profile);
+				int level = parent->InqIntQuality(LEVEL_INT, 0);
+				if (level >= tier->qualityLootLevelThreshold && qualityModifier < tier->qualityLootModifier)
+					qualityModifier = tier->qualityLootModifier;
+			}
+			else if (parent->AsContainer() && !parent->AsMonster())
+			{
+				//we're a container so apply container related stuff.
+
+				//Turbine did a bad job of converting chests to the new treasure profiles resulting in chests with loot that
+				//doesnt match the level of the area they are located in. This is a quick fix for that. A better fix would be
+				//to edit the chest generator tables themselves. But even then it would require changing some chest wcids
+				//because there are chests wcids that are uses both in newbie and high level areas.
+				int newTreasureTypeOrWcid = 0;
+				for each(auto entry in _TreasureProfile->chestTreasureTypeReplacementTable)
+				{
+					if (treasureTypeOrWcid == entry.first)
+					{
+						newTreasureTypeOrWcid = entry.second;
+						break;
+					}
+				}
+
+				if (newTreasureTypeOrWcid != 0 && treasureTypeOrWcid != newTreasureTypeOrWcid)
+				{
+					treasureTypeOrWcid = newTreasureTypeOrWcid;
+					entry = g_pPortalDataEx->_treasureTableData.GetTreasureGenerationProfile(treasureTypeOrWcid);
+					if (!entry)
+						return amountCreated;
+				}
+
+				tierId = entry->_tier;
+				tier = &_TreasureProfile->tiers[tierId];
+				if (tier == NULL)
+					return amountCreated;
+				qualityModifier = entry->_lootQualityMod;
+				maxTreasureAmount = entry->_itemMaxAmount + entry->_magicItemMaxAmount;
+				if (maxTreasureAmount == 1)
+					maxTreasureAmount = 3;
+				maxTreasureAmount = round(maxTreasureAmount * tier->chestLootAmountMultiplier);
+				maxMundaneAmount = 0;
+				lootChance = tier->chestLootChance;
+				mundaneLootChance = 0;
+
+				if (qualityModifier < tier->qualityLootModifier)
+					qualityModifier = tier->qualityLootModifier;
+			}
+
+			//These are the 3 basic types for Turbine's loot tables. Basically warrior types drop less magical items and less casters.
+			//Magic types drop less items but they are all magical, they also drop more casters.
+			//General is an in-between type.
+			//These types were added in 2004 when they streamlined the treasure system, but even today there are lots of old creatures that still
+			//weren't migrated.
+			//For now all we use this for is to prevent warrior types from dropping scrolls.
+			switch (entry->_itemTreasureTypeSelectionChances)
+			{
+			case 0:
+				entryType = eTreasureTypeEntryType_Magic;
+				break;
+			case 8:
+				entryType = eTreasureTypeEntryType_Warrior;
+				break;
+			default:
+			case 9:
+				entryType = eTreasureTypeEntryType_General;
+				break;
+			}
+
+			for (int i = 0; i < maxTreasureAmount; i++)
+			{
+				if (getRandomNumberExclusive(100) < lootChance * 100)
+				{
+					if (CWeenieObject *newItem = GenerateTreasure(tierId, tier->GetRandomTreasureCategory(), qualityModifier))
+					{
+						g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
+						amountCreated++;
+					}
+				}
+			}
+
+			for (int i = 0; i < maxMundaneAmount; i++)
+			{
+				if (getRandomNumberExclusive(100) < mundaneLootChance * 100)
+				{
+					if (CWeenieObject *newItem = GenerateMundaneItem(tier))
+					{
+						g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
+						amountCreated++;
+					}
+				}
+			}
+
+			if (entryType != eTreasureTypeEntryType_Warrior && getRandomNumberExclusive(100) < tier->scrollLootChance * 100)
+			{
+				if (CWeenieObject *newItem = GenerateScroll(tier))
+				{
+					g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
+					amountCreated++;
+				}
+			}
+			return amountCreated;
 		}
 	}
 	else
@@ -1081,130 +1155,6 @@ int CTreasureFactory::GenerateFromTypeOrWcid(CWeenieObject *parent, int destinat
 		}
 	}
 
-	return amountCreated;
-}
-
-int CTreasureFactory::GenerateFromType(CTreasureType *type, CWeenieObject * parent, int destinationType, bool isRegenLocationType, DWORD treasureTypeOrWcid, unsigned int ptid, float shade, const GeneratorProfile * profile)
-{
-	int amountCreated = 0;
-	int tierId = type->tier;
-	CTreasureTier *tier = &_TreasureProfile->tiers[type->tier];
-	if (tier == NULL)
-		return amountCreated;
-	int maxTreasureAmount = type->maxTreasureAmount;
-	int maxMundaneAmount = type->maxMundaneAmount;
-	float lootChance = type->lootChance;
-	float mundaneLootChance = type->mundaneLootChance;
-	float qualityModifier = type->qualityModifier;
-
-	if (parent->AsCorpse())
-	{
-		//we're a corpse
-		maxTreasureAmount = round(maxTreasureAmount * tier->lootAmountMultiplier);
-		lootChance = tier->lootChance;
-		mundaneLootChance = tier->miscLootChance;
-
-		int level = parent->InqIntQuality(LEVEL_INT, 0);
-		if (level >= tier->qualityLootLevelThreshold && qualityModifier < tier->qualityLootModifier)
-			qualityModifier = tier->qualityLootModifier;
-	}
-	else if (parent->AsContainer() && !parent->AsMonster())
-	{
-		//we're a container so apply container related stuff.
-
-		//Turbine did a bad job of converting chests to the new treasure profiles resulting in chests with loot that
-		//doesnt match the level of the area they are located in. This is a quick fix for that. A better fix would be
-		//to edit the chest generator tables themselves. But even then it would require changing some chest wcids
-		//because there are chests wcids that are uses both in newbie and high level areas.
-		int newTreasureTypeOrWcid = 0;
-		for each(auto entry in _TreasureProfile->chestTreasureTypeReplacementTable)
-		{
-			if (treasureTypeOrWcid == entry.first)
-			{
-				newTreasureTypeOrWcid = entry.second;
-				break;
-			}
-		}
-
-		if (newTreasureTypeOrWcid != 0 && treasureTypeOrWcid != newTreasureTypeOrWcid)
-		{
-			if (_TreasureProfile->treasureTypeOverrides.find(treasureTypeOrWcid) != _TreasureProfile->treasureTypeOverrides.end())
-			{
-				CTreasureType *entry = &_TreasureProfile->treasureTypeOverrides.at(treasureTypeOrWcid);
-				treasureTypeOrWcid = newTreasureTypeOrWcid;
-
-				tierId = type->tier;
-				tier = &_TreasureProfile->tiers[type->tier];
-				if (tier == NULL)
-					return amountCreated;
-				qualityModifier = type->qualityModifier;
-				maxTreasureAmount = type->maxTreasureAmount;
-				if (maxTreasureAmount == 1)
-					maxTreasureAmount = 3;
-
-				if (qualityModifier < tier->qualityLootModifier)
-					qualityModifier = tier->qualityLootModifier;
-			}
-			else if (TreasureEntry2 *entry = g_pPortalDataEx->_treasureTableData.GetTreasureGenerationProfile(treasureTypeOrWcid))
-			{
-				treasureTypeOrWcid = newTreasureTypeOrWcid;
-
-				tierId = entry->_tier;
-				tier = &_TreasureProfile->tiers[tierId];
-				if (tier == NULL)
-					return amountCreated;
-				qualityModifier = entry->_lootQualityMod;
-				maxTreasureAmount = entry->_itemMaxAmount + entry->_magicItemMaxAmount;
-				if (maxTreasureAmount == 1)
-					maxTreasureAmount = 3;
-
-				if (qualityModifier < tier->qualityLootModifier)
-					qualityModifier = tier->qualityLootModifier;
-			}
-			else
-				return amountCreated;
-		}
-
-		maxTreasureAmount = round(maxTreasureAmount * tier->chestLootAmountMultiplier);
-		lootChance = tier->chestLootChance;
-
-		//chests do not drop mundane items.
-		mundaneLootChance = 0;
-		maxMundaneAmount = 0;
-	}
-
-	for (int i = 0; i < maxTreasureAmount; i++)
-	{
-		if (getRandomNumberExclusive(100) < lootChance * 100)
-		{
-			if (CWeenieObject *newItem = GenerateTreasure(tierId, tier->GetRandomTreasureCategory(), qualityModifier))
-			{
-				g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
-				amountCreated++;
-			}
-		}
-	}
-
-	for (int i = 0; i < maxMundaneAmount; i++)
-	{
-		if (getRandomNumberExclusive(100) < mundaneLootChance * 100)
-		{
-			if (CWeenieObject *newItem = GenerateMundaneItem(tier))
-			{
-				g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
-				amountCreated++;
-			}
-		}
-	}
-
-	if (getRandomNumberExclusive(100) < tier->scrollLootChance * 100)
-	{
-		if (CWeenieObject *newItem = GenerateScroll(tier))
-		{
-			g_pWeenieFactory->AddWeenieToDestination(newItem, parent, destinationType, isRegenLocationType, profile);
-			amountCreated++;
-		}
-	}
 	return amountCreated;
 }
 
@@ -1518,7 +1468,9 @@ bool CTreasureFactory::MutateItem(CWeenieObject *newItem, sItemCreationInfo &cre
 					possibleMaterialsList.insert(possibleMaterialsList.end(), tier->materialsStone.begin(), tier->materialsStone.end());
 				if (possibleMaterial == MaterialType::Wood_MaterialType)
 					possibleMaterialsList.insert(possibleMaterialsList.end(), tier->materialsWood.begin(), tier->materialsWood.end());
+
 			}
+
 		}
 		material = possibleMaterialsList[getRandomNumberExclusive(possibleMaterialsList.size())];
 
@@ -1537,28 +1489,9 @@ bool CTreasureFactory::MutateItem(CWeenieObject *newItem, sItemCreationInfo &cre
 			}
 		}
 
-		//The following code generated materials from the inferred data
-		//MaterialType materialCategory = g_pPortalDataEx->_treasureTableData.RollBaseMaterialFromMaterialCode(materialCode, tier->tierId);
-		//if (materialCategory != MaterialType::Undef_MaterialType)
-		//{
-		//	material = g_pPortalDataEx->_treasureTableData.RollMaterialFromBaseMaterial(materialCategory, tier->tierId);
-		//	if (material != MaterialType::Undef_MaterialType)
-		//	{
-		//		newItem->m_Qualities.SetInt(MATERIAL_TYPE_INT, material);
-		//		//materialValueMultiplier = *g_pPortalDataEx->_treasureTableData._materialValueAddedPossibly.lookup(material);
-
-		//		int ptid = g_pPortalDataEx->_treasureTableData.RollPaletteTemplateIDFromMaterialAndColorCode(material, colorCode);
-		//		if (ptid != 0)
-		//		{
-		//			newItem->m_Qualities.SetInt(PALETTE_TEMPLATE_INT, ptid);
-		//			newItem->m_Qualities.SetFloat(SHADE_FLOAT, getRandomDouble(1.0));
-		//			newItem->m_Qualities.SetFloat(SHADE2_FLOAT, getRandomDouble(1.0));
-		//			newItem->m_Qualities.SetFloat(SHADE3_FLOAT, getRandomDouble(1.0));
-		//			newItem->m_Qualities.SetFloat(SHADE4_FLOAT, getRandomDouble(1.0));
-		//		}
-		//	}
-		//}
 	}
+
+
 
 	int maxGemCount = _TreasureProfile->workmanshipProperties[itemWorkmanship].maxGemCount;
 	if (maxGemCount > 0)
@@ -1597,6 +1530,7 @@ bool CTreasureFactory::MutateItem(CWeenieObject *newItem, sItemCreationInfo &cre
 
 	if (itemType == TYPE_MELEE_WEAPON)
 	{
+
 		DAMAGE_TYPE damageType = (DAMAGE_TYPE)newItem->InqIntQuality(DAMAGE_TYPE_INT, DAMAGE_TYPE::UNDEF_DAMAGE_TYPE);
 		if (damageType == ACID_DAMAGE_TYPE || damageType == FIRE_DAMAGE_TYPE || damageType == COLD_DAMAGE_TYPE || damageType == ELECTRIC_DAMAGE_TYPE)
 			valueCalc += 0.25f * baseValue;
@@ -1793,6 +1727,8 @@ void CTreasureFactory::MutateMeleeWeapon(CWeenieObject *newItem, CWieldTier *wie
 				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
 				newItem->m_Qualities.SetString(NAME_STRING, "Lightning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
 				break;
+
+
 			}
 		}
 	}
@@ -1800,63 +1736,166 @@ void CTreasureFactory::MutateMeleeWeapon(CWeenieObject *newItem, CWieldTier *wie
 
 void CTreasureFactory::MutateMissileWeapon(CWeenieObject *newItem, CWieldTier *wieldTier, sItemCreationInfo &creationInfo, CTreasureTier *tier, CTreasureProfileCategory *category, CItemTreasureProfileEntry *entry)
 {
-	newItem->m_Qualities.SetFloat(DAMAGE_MOD_FLOAT, round(newItem->InqFloatQuality(DAMAGE_MOD_FLOAT, 1.0, TRUE) + getRandomDouble(wieldTier->minDamageModBonus, wieldTier->maxDamageModBonus, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 2));
 
+	newItem->m_Qualities.SetFloat(DAMAGE_MOD_FLOAT, round(newItem->InqFloatQuality(DAMAGE_MOD_FLOAT, 1.0, TRUE) + getRandomDouble(wieldTier->minDamageModBonus, wieldTier->maxDamageModBonus, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 2));
 	if (wieldTier->slowSpeedMod > 0 && wieldTier->fastSpeedMod > 0)
 	{
 		int weaponTime = newItem->InqIntQuality(WEAPON_TIME_INT, 50, TRUE);
 		double weaponTimeMod = getRandomDouble(wieldTier->fastSpeedMod, wieldTier->slowSpeedMod, eRandomFormula::favorHigh, 2, creationInfo.qualityModifier);
 		newItem->m_Qualities.SetInt(WEAPON_TIME_INT, round(weaponTime * weaponTimeMod));
-	}
 
-	if (wieldTier->maxElementalDamageBonus > 0)
-	{
-		int elementalDamage = getRandomNumber(wieldTier->minElementalDamageBonus, wieldTier->maxElementalDamageBonus, eRandomFormula::favorMid, 2, 0);
-
-		if (elementalDamage > 0)
+		if (!entry->elementalVariants.empty())
 		{
-			eElements elementalType = (eElements)getRandomNumber(1, 3);
 			if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
-				elementalType = (eElements)getRandomNumber(4, 7);
-			newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
-
-			switch (elementalType)
 			{
-			case acid:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
-				newItem->m_Qualities.SetString(NAME_STRING, "Acid " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case cold:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
-				newItem->m_Qualities.SetString(NAME_STRING, "Frost " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case fire:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
-				newItem->m_Qualities.SetString(NAME_STRING, "Fire " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case lightning:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Electric " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case bludgeoning:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Blunt " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case piercing:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Piercing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case slashing:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Slashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
+				int variantId = entry->elementalVariants[getRandomNumberExclusive((int)entry->elementalVariants.size())];
+
+				CWeenieDefaults *weenieDefs = g_pWeenieFactory->GetWeenieDefaults(variantId);
+
+				if (weenieDefs == NULL)
+					return;
+
+				int elementalType;
+				weenieDefs->m_Qualities.InqInt(DAMAGE_TYPE_INT, elementalType, TRUE);
+
+				DWORD setup;
+				if (weenieDefs->m_Qualities.InqDataID(SETUP_DID, setup))
+					newItem->m_Qualities.SetDataID(SETUP_DID, setup);
+
+				int elementalDamage = getRandomNumber(wieldTier->minElementalDamageBonus, wieldTier->maxElementalDamageBonus, eRandomFormula::favorMid, 2, 0);
+				if (elementalDamage > 0)
+				{
+					//-------- Removed as it conflicts with my custom jsons -Zeus -----------//
+
+					/* elementalType = getRandomNumber(4, 7);
+					if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
+						elementalType = getRandomNumber(1, 3);
+					newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage); */
+
+					//-----------------------------------------------------------------------//
+					switch ((DAMAGE_TYPE)elementalType)
+					{
+					case DAMAGE_TYPE::ACID_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
+						newItem->m_Qualities.SetString(NAME_STRING, "Acid " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31799) //Acid Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559669);
+						if
+							(weenieDefs->m_WCID == 28235) //Acid Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559029),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31806) //Acid XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559665);
+						break;
+					case DAMAGE_TYPE::COLD_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
+						newItem->m_Qualities.SetString(NAME_STRING, "Frost " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31803) //Cold Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559667);
+						if
+							(weenieDefs->m_WCID == 28239) //Cold Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559026),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31810) //Cold XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559663);
+						break;
+					case DAMAGE_TYPE::FIRE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
+						newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31802) //Fire Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559668);
+					    if
+							(weenieDefs->m_WCID == 28238) //Fire Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559025),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31809) //FIre XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559664);
+						break;
+					case DAMAGE_TYPE::ELECTRIC_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Lightning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 48233) //Light Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559666);
+						if
+							(weenieDefs->m_WCID == 28237) //Light Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559031),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31808) //Light XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559662);
+						break;
+					case DAMAGE_TYPE::BLUDGEON_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Bludgeoning " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31800) //Bludge Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559689);
+						if
+							(weenieDefs->m_WCID == 28236) //Bludge Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559030),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31807) //Bludge XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559692);
+						break;
+					case DAMAGE_TYPE::PIERCE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Piercing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31804) //Pierce Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559690);
+						if
+							(weenieDefs->m_WCID == 28240) //Pierce Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559027),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31811) //Pierce XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559693);
+						break;
+					case DAMAGE_TYPE::SLASH_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(ELEMENTAL_DAMAGE_BONUS_INT, elementalDamage);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Slashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 31798) //Slash Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559688);
+						if
+							(weenieDefs->m_WCID == 28241) //Slash Yumi Bow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 3559028),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668815);
+						if
+							(weenieDefs->m_WCID == 31805) //Slash XBow
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559691);
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -1902,61 +1941,195 @@ void CTreasureFactory::MutateCaster(CWeenieObject *newItem, CWieldTier *wieldTie
 			break;
 		}
 
-		if (wieldTier->maxManaConversionBonus > 0 && getRandomNumberExclusive(100) < wieldTier->manaConversionBonusChance * 100 * (1 + (creationInfo.qualityModifier * 2)))
+		if (!entry->elementalVariants.empty())
 		{
-			double manaConversionMod = round(getRandomDouble(0, wieldTier->maxManaConversionBonus / 100, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 1);
-			if (manaConversionMod > 0)
-				newItem->m_Qualities.SetFloat(MANA_CONVERSION_MOD_FLOAT, manaConversionMod);
-		}
-
-		if (wieldTier->maxElementalDamageMod > 0)
-		{
-			double elementalDamageMod = round(getRandomDouble(wieldTier->minElementalDamageMod, wieldTier->maxElementalDamageMod, eRandomFormula::favorMid, 2, 0), 2);
-
-			elementalDamageMod = 1.0 + (elementalDamageMod / 100.0);
-
-			eElements elementalType = (eElements)getRandomNumber(4, 7);
 			if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
-				elementalType = (eElements)getRandomNumber(1, 3);
-			newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
-
-			switch (elementalType)
 			{
-			case acid:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
-				newItem->m_Qualities.SetString(NAME_STRING, "Searing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case cold:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
-				newItem->m_Qualities.SetString(NAME_STRING, "Freezing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case fire:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
-				newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case lightning:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Zapping " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case bludgeoning:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Smashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case piercing:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Prickly " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
-			case slashing:
-				newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
-				newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
-				newItem->m_Qualities.SetString(NAME_STRING, "Slicing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
-				break;
+				int variantId = entry->elementalVariants[getRandomNumberExclusive((int)entry->elementalVariants.size())];
+
+				CWeenieDefaults *weenieDefs = g_pWeenieFactory->GetWeenieDefaults(variantId);
+
+				if (weenieDefs == NULL)
+					return;
+
+				int elementalType;
+				weenieDefs->m_Qualities.InqInt(DAMAGE_TYPE_INT, elementalType, TRUE);
+
+				DWORD setup;
+				if (weenieDefs->m_Qualities.InqDataID(SETUP_DID, setup))
+					newItem->m_Qualities.SetDataID(SETUP_DID, setup);
+
+				if (wieldTier->maxManaConversionBonus > 0 && getRandomNumberExclusive(100) < wieldTier->manaConversionBonusChance * 100 * (1 + (creationInfo.qualityModifier * 2)))
+				{
+					double manaConversionMod = round(getRandomDouble(0, wieldTier->maxManaConversionBonus / 100, eRandomFormula::favorMid, 2, creationInfo.qualityModifier), 1);
+					if (manaConversionMod > 0)
+						newItem->m_Qualities.SetFloat(MANA_CONVERSION_MOD_FLOAT, manaConversionMod);
+				}
+
+				if (wieldTier->maxElementalDamageMod > 0)
+				{
+					double elementalDamageMod = round(getRandomDouble(wieldTier->minElementalDamageMod, wieldTier->maxElementalDamageMod, eRandomFormula::favorMid, 2, 0), 2);
+
+					elementalDamageMod = 1.0 + (elementalDamageMod / 100.0);
+
+					//-------------Removed due to conflict with custom Jsons -Zeus ------------//
+
+					/* eElements elementalType = (eElements)getRandomNumber(4, 7);
+					if (getRandomNumberExclusive(100) < wieldTier->elementalChance * 100)
+						elementalType = (eElements)getRandomNumber(1, 3);
+					newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod); */
+
+					//-----------------------------------------------------------------------//
+
+					switch ((DAMAGE_TYPE)elementalType)
+					{
+					case DAMAGE_TYPE::ACID_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ACID_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_ACID);
+						newItem->m_Qualities.SetString(NAME_STRING, "Searing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29259) //Acid Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559229),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27881) //Acid Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 3559024),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 37224) //Acid Staff
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33560650),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+						    (weenieDefs->m_WCID == 31820) //Acid Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559641),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688011);
+					    break;
+					case DAMAGE_TYPE::COLD_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, COLD_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FROST);
+						newItem->m_Qualities.SetString(NAME_STRING, "Freezing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29263) //Cold Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559227),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27885) //Cold Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559020),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 31820) //Cold Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559639),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688012);
+						break;
+					case DAMAGE_TYPE::FIRE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, FIRE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_FIRE);
+						newItem->m_Qualities.SetString(NAME_STRING, "Flaming " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29262) //Fire Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559228),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27884) //Fire Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559021),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 31820) //Fire Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559640),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688016);
+						break;
+					case DAMAGE_TYPE::ELECTRIC_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, ELECTRIC_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_LIGHTNING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Zapping " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29261) //Light Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559230),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27883) //Light Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559022),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 31820) //Light Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559638),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688012);
+						break;
+					case DAMAGE_TYPE::BLUDGEON_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, BLUDGEON_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_BLUDGEONING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Smashing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29260) //Bludge Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559231),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27882) //Bludge Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559023),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 31820) //Bludge Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559699),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688013);
+						break;
+					case DAMAGE_TYPE::PIERCE_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, PIERCE_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_PIERCING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Prickly " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29264) //Pierce Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559232),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792);
+						if
+							(weenieDefs->m_WCID == 27886) //Pierce Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559019),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722);
+						if
+							(weenieDefs->m_WCID == 31820) //Pierce Baton
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559698),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100688016);
+						break;
+					case DAMAGE_TYPE::SLASH_DAMAGE_TYPE:
+						newItem->m_Qualities.SetInt(DAMAGE_TYPE_INT, SLASH_DAMAGE_TYPE);
+						newItem->m_Qualities.SetFloat(ELEMENTAL_DAMAGE_MOD_FLOAT, elementalDamageMod);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
+						newItem->m_Qualities.SetString(NAME_STRING, "Slicing " + newItem->m_Qualities.GetString(NAME_STRING, ""));
+
+						if (weenieDefs->m_WCID == 29265) //Slash Scepter
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559233),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668792),
+							newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING),
+							newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						else if
+							(weenieDefs->m_WCID == 27887) //Slash Orb
+							newItem->m_Qualities.SetDataID(SETUP_DID, 33559018),
+							newItem->m_Qualities.SetDataID(ICON_DID, 100668722),
+							newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING),
+							newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						else
+							(weenieDefs->m_WCID == 31820), //Slash Baton
+						newItem->m_Qualities.SetDataID(SETUP_DID, 33559697);
+						newItem->m_Qualities.SetDataID(ICON_DID, 100688013);
+						newItem->m_Qualities.SetInt(UI_EFFECTS_INT, UI_EFFECT_TYPE::UI_EFFECT_SLASHING);
+						newItem->m_Qualities.SetDataID(PALETTE_BASE_DID, 67116700);
+						newItem->m_Qualities.SetDataID(CLOTHINGBASE_DID, 268437034);
+							
+						break;
+					}
+				}
 			}
 		}
 	}

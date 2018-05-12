@@ -1,4 +1,6 @@
 
+
+// File absorbed from GDLE Team at https://gitlab.com/Scribble/gdlenhanced/blob/master/Source/Logging.h //
 #pragma once
 
 #include "Util.h"
@@ -14,7 +16,7 @@ public:
 	void Write(const char *text);
 
 private:
-	FILE *m_File = NULL;
+	FILE * m_File = NULL;
 };
 
 class CLogger
@@ -66,13 +68,13 @@ enum {
 #define LOG_PUBLIC(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
 #define LOG_PRIVATE(category, level, ...)
 #define LOG_PRIVATE_BYTES(category, level, data, len) 
-#define LOG(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
+#define WINLOG(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
 #define LOG_BYTES(category, level, data, len) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, DebugBytesToString(data, len).c_str())
 #else
 #define LOG_PUBLIC(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
 #define LOG_PRIVATE(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
 #define LOG_PRIVATE_BYTES(category, level, data, len) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, DebugBytesToString(data, len).c_str())
-#define LOG(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
+#define WINLOG(category, level, ...) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, __VA_ARGS__)
 #define LOG_BYTES(category, level, data, len) g_Logger.Write(LOGCATEGORY_##category, LOGLEVEL_##level, DebugBytesToString(data, len).c_str())
 #endif
 

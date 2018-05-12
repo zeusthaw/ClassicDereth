@@ -188,6 +188,8 @@ public:
 	virtual class CBaseLifestone *AsLifestone() { return NULL; }
 	virtual class CBindStone *AsBindStone() { return NULL; }
 	virtual class CLockpickWeenie *AsLockpick() { return NULL; }
+	//Merged from GDLE2 Team https://gitlab.com/Scribble/gdlenhanced/commit/75132b15809a026a58d5ed5abefac26290b14461 //
+	virtual class CManaStoneWeenie *AsManaStone() { return NULL; }
 	virtual class CMeleeWeaponWeenie *AsMeleeWeapon() { return NULL; }
 	virtual class CMissileWeenie *AsMissile() { return NULL; }
 	virtual class CMissileLauncherWeenie *AsMissileLauncher() { return NULL; }

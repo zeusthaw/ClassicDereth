@@ -33,6 +33,13 @@ enum eSpellCategory
 	weaponSkillMastery
 };
 
+enum eTreasureTypeEntryType
+{
+	eTreasureTypeEntryType_General,
+	eTreasureTypeEntryType_Warrior,
+	eTreasureTypeEntryType_Magic,
+};
+
 enum eTreasureCategory
 {
 	TreasureCategory_Undef = 0,
@@ -272,17 +279,6 @@ public:
 	eTreasureCategory GetRandomTreasureCategory();
 };
 
-class CTreasureType
-{
-public:
-	int tier = 0;
-	int maxTreasureAmount = 0;
-	double lootChance = 0.0;
-	int maxMundaneAmount = 0;
-	double mundaneLootChance = 0.0;
-	double qualityModifier = 0.0;
-};
-
 class CTreasureProfile : public PackableJson
 {
 public:
@@ -326,7 +322,6 @@ public:
 	std::map<int, CWorkmanshipProperties> workmanshipProperties;
 
 	std::map<int, int> chestTreasureTypeReplacementTable;
-	std::map<int, CTreasureType> treasureTypeOverrides;
 
 	bool isInitialized;
 	int nextSpellId;
@@ -390,7 +385,6 @@ public:
 	void Initialize();
 
 	int GenerateFromTypeOrWcid(CWeenieObject *parent, int destinationType, bool isRegenLocationType, DWORD treasureTypeOrWcid, unsigned int ptid = 0, float shade = 0.0f, const GeneratorProfile *profile = NULL);
-	int GenerateFromType(CTreasureType *type, CWeenieObject *parent, int destinationType, bool isRegenLocationType, DWORD treasureTypeOrWcid, unsigned int ptid = 0, float shade = 0.0f, const GeneratorProfile *profile = NULL);
 
 	//bool AddTreasureToContainerInferred(CContainerWeenie *container, DWORD treasureType);
 	//CWeenieObject *GenerateMundaneItemInferred(int tierId, eTreasureCategory treasureCategory);

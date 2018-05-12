@@ -38,7 +38,6 @@
 #include "InferredPortalData.h"
 #include "RandomRange.h"
 #include "House.h"
-#include "GameEventManager.h"
 
 // Most of these commands are just for experimenting and never meant to be used in a real game
 // TODO: Add flags to these commands so they are only accessible under certain modes such as a sandbox mode
@@ -1893,13 +1892,14 @@ CLIENT_COMMAND(setname, "[name]", "Changes the last assessed target's name.", AD
 	return false;
 }
 
+/*
 #ifndef PUBLIC_BUILD
 CLIENT_COMMAND(setmodel, "[monster]", "Changes your model to a monster.", ADMIN_ACCESS)
 {
 	pPlayer->SendText("Command disabled.", LTT_DEFAULT);
 	return false;
 
-	/*
+	
 	if (!SpawningEnabled(pPlayer))
 	{
 		return false;
@@ -1937,9 +1937,9 @@ CLIENT_COMMAND(setmodel, "[monster]", "Changes your model to a monster.", ADMIN_
 
 	pPlayer->UpdateEntity(pPlayer);
 	return false;
-	*/
-}
-#endif
+	
+} 
+#endif */
 
 /*
 CLIENT_COMMAND(invisible, "", "Go Invisible", BASIC_ACCESS)
@@ -2702,7 +2702,7 @@ CLIENT_COMMAND(activeevents, "", "", ADMIN_ACCESS)
 {
 	std::string eventText = "Enabled events:";
 
-	for (auto &entry : g_pGameEventManager->_gameEvents)
+	for (auto &entry : g_pPortalDataEx->_gameEvents._gameEvents)
 	{
 		if (entry.second._eventState != GameEventState::Off_GameEventState)
 		{		
@@ -3446,7 +3446,7 @@ CLIENT_COMMAND(spawnfollow, "", "", ADMIN_ACCESS)
 
 	// params.desired_heading = fmod(pObject->m_Position.frame.get_heading() + 90.0, 360.0);
 	pObject->MoveToObject(pPlayer->GetID(), &params);
-	return false;
+	return true;
 }
 
 CLIENT_COMMAND(spawnfollow2, "", "", ADMIN_ACCESS)

@@ -1927,11 +1927,8 @@ void CWeenieObject::GiveXP(long long amount, bool showText, bool allegianceXP)
 			break;
 	}
 
-	if (!(currentLevel == ExperienceSystem::GetMaxLevel() && g_pConfig->DisableUnassignedXPAtMaxLevel()))
-	{
-		m_Qualities.SetInt64(AVAILABLE_EXPERIENCE_INT64, newAvailableXP);
-		NotifyInt64StatUpdated(AVAILABLE_EXPERIENCE_INT64);
-	}
+	m_Qualities.SetInt64(AVAILABLE_EXPERIENCE_INT64, newAvailableXP);
+	NotifyInt64StatUpdated(AVAILABLE_EXPERIENCE_INT64);
 
 	m_Qualities.SetInt64(TOTAL_EXPERIENCE_INT64, newTotalXP);
 	NotifyInt64StatUpdated(TOTAL_EXPERIENCE_INT64);
@@ -4075,7 +4072,7 @@ float CWeenieObject::GetEffectiveArmorLevel(DamageEventData &damageData, bool bI
 	GetIntEnchantmentDetails(ARMOR_LEVEL_INT, 0, &buffDetails);
 
 	if (bIgnoreMagicArmor)
-		armorLevel = buffDetails.rawValue;
+		armorLevel = buffDetails.enchantedValue_DecreasingOnly; //debuffs still count
 	else
 		armorLevel = buffDetails.enchantedValue;
 
@@ -4161,11 +4158,9 @@ void CWeenieObject::TakeDamage(DamageEventData &damageData)
 		buffDetails.CalculateEnchantedValue();
 	}
 
-	float resistanceRegular;
+	float resistanceRegular = buffDetails.enchantedValue;
 	if (damageData.ignoreMagicResist)
-		resistanceRegular = buffDetails.rawValue;
-	else
-		resistanceRegular = buffDetails.enchantedValue;
+		resistanceRegular = buffDetails.enchantedValue_IncreasingOnly; //debuffs still count
 
 	if (damageData.damageAfterMitigation > 0 || damageData.damage_type == HEALTH_DAMAGE_TYPE || damageData.damage_type == STAMINA_DAMAGE_TYPE || damageData.damage_type == MANA_DAMAGE_TYPE)
 	{
