@@ -84,7 +84,7 @@ void AllegianceTreeNode::UpdateWithWeenie(CWeenieObject *weenie)
 
 DEFINE_PACK(AllegianceTreeNode)
 {
-	pWriter->Write<DWORD>(1); // version
+	pWriter->Write<DWORD>(2); // version //Absorbed from GDLE
 	pWriter->Write<DWORD>(_charID);
 	pWriter->WriteString(_charName);
 
@@ -100,6 +100,9 @@ DEFINE_PACK(AllegianceTreeNode)
 	pWriter->Write<DWORD64>(_cp_cached);
 	pWriter->Write<DWORD64>(_cp_tithed);
 	pWriter->Write<DWORD64>(_cp_pool_to_unload);
+	pWriter->Write<DWORD64>(_unixTimeSwornAt); //Absorbed from GDLE
+	pWriter->Write<DWORD64>(_ingameSecondsSworn); //Absorbed from GDLE
+
 
 	pWriter->Write<DWORD>(_vassals.size());
 	for (auto &entry : _vassals)
@@ -108,7 +111,7 @@ DEFINE_PACK(AllegianceTreeNode)
 
 DEFINE_UNPACK(AllegianceTreeNode)
 {
-	pReader->Read<DWORD>(); // version
+	DWORD version = pReader->Read<DWORD>(); // version //Absorbed from GDLE
 	_charID = pReader->Read<DWORD>();
 	_charName = pReader->ReadString();
 
@@ -124,6 +127,16 @@ DEFINE_UNPACK(AllegianceTreeNode)
 	_cp_cached = pReader->Read<DWORD64>();
 	_cp_tithed = pReader->Read<DWORD64>();
 	_cp_pool_to_unload = pReader->Read<DWORD64>();
+
+	if
+		(version < 2) {
+		_unixTimeSwornAt = time(0); // set to now // Absorbed from GDLE
+		_ingameSecondsSworn = 1;
+	} else {
+		_unixTimeSwornAt = pReader->Read<DWORD64>();
+		_ingameSecondsSworn = pReader->Read<DWORD64>();
+
+	}
 
 	DWORD numVassals = pReader->Read<DWORD>();
 	for (DWORD i = 0; i < numVassals; i++)
@@ -168,7 +181,7 @@ void AllegianceManager::Load()
 		UnPack(&reader);
 	}
 
-	m_NextSave = Timer::cur_time + 300.0; // every 5 minutes save
+	m_LastSave = Timer::cur_time; //Absorbed from GDLE
 }
 
 void AllegianceManager::Save()
@@ -178,12 +191,29 @@ void AllegianceManager::Save()
 	g_pDBIO->CreateOrUpdateGlobalData(DBIO_GLOBAL_ALLEGIANCE_DATA, data.GetData(), data.GetSize());
 }
 
+//Absorbed from GDLE
+void AllegianceManager::WalkTreeAndBumpOnlineTime(AllegianceTreeNode *node, int onlineSecondsDelta) {
+	// Walk allegiance tree and bump _ingameSecondsSworn for all online characters. 
+	// There's probably a better way of maintaining number of seconds of online-time.
+	for (auto &entry : node->_vassals) {
+		AllegianceTreeNode *vassal = entry.second;
+		CPlayerWeenie *target = g_pWorld->FindPlayer(vassal->_charID);
+		if (target)
+			vassal->_ingameSecondsSworn += onlineSecondsDelta;
+		WalkTreeAndBumpOnlineTime(vassal, onlineSecondsDelta);
+	}
+}
+
+
 void AllegianceManager::Tick()
 {
-	if (m_NextSave <= Timer::cur_time)
+	if (m_LastSave <= Timer::cur_time - 300.0) //Absorbed from GDLE
 	{
+		for (auto &entry : _monarchs)
+			WalkTreeAndBumpOnlineTime(entry.second, ((int)round(Timer::cur_time - m_LastSave)));
+
 		Save();
-		m_NextSave = Timer::cur_time + 300.0; // every 5 minutes save
+		m_LastSave = Timer::cur_time; 
 	}
 }
 
@@ -597,6 +627,9 @@ int AllegianceManager::TrySwearAllegiance(CWeenieObject *source, CWeenieObject *
 	selfTreeNode->_numFollowers = 0;
 	selfTreeNode->_patronID = targetTreeNode->_charID;
 	selfTreeNode->_monarchID = targetTreeNode->_monarchID;
+	selfTreeNode->_unixTimeSwornAt = time(0);
+	selfTreeNode->_ingameSecondsSworn = 1;
+
 
 	targetTreeNode->_vassals[selfTreeNode->_charID] = selfTreeNode;
 
@@ -787,19 +820,43 @@ void AllegianceManager::HandleAllegiancePassup(DWORD source_id, long long amount
 
 	if (!patron) // shouldn't happen
 		return;
+	time_t currentTime = time(0);
 
 	double realDaysSworn = 0;
 	double ingameHoursSworn = 0;
-	double vassalFactor = min(1.0, max(0.0, 0.25 * patron->_vassals.size()));
+
 
 	double avgRealDaysVassalsSworn = 0;
 	double avgIngameHoursVassalsSworn = 0;
+	for (auto &entry : patron->_vassals) {
+		AllegianceTreeNode *vassal = entry.second;
+		double vassalDaysSworn = ((currentTime - vassal->_unixTimeSwornAt) / 86400.0);
+		double vassalIngameHours = (vassal->_ingameSecondsSworn / 3600.0);
+		if (vassal->_charID == node->_charID) {
+			realDaysSworn = vassalDaysSworn;
+			ingameHoursSworn = vassalIngameHours;
+		}
+		avgRealDaysVassalsSworn += vassalDaysSworn;
+		avgIngameHoursVassalsSworn += vassalIngameHours;
+	}
+	avgRealDaysVassalsSworn /= patron->_vassals.size();
+	avgIngameHoursVassalsSworn /= patron->_vassals.size();
+
+	double vassalFactor = min(1.0, max(0.0, 0.25 * patron->_vassals.size()));
+	double realDaysSwornFactor = min(realDaysSworn, 730.0) / 730.0;
+	double ingameHoursSwornFactor = min(ingameHoursSworn, 720.0) / 720.0;
+	double avgRealDaysVassalsSwornFactor = min(avgRealDaysVassalsSworn, 730.0) / 730.0;
+	double avgIngameHoursVassalsSwornFactor = min(avgIngameHoursVassalsSworn, 720.0) / 720.0;
+	double loyaltyFactor = min(node->_loyalty, 291.0) / 291.0;
+	double leadershipFactor = min(patron->_leadership, 291.0) / 291.0;
+
 
 	double factor1 = direct ? 50.0 : 16.0;
 	double factor2 = direct ? 22.5 : 8.0;
 
-	double generatedPercent = 0.01 * (factor1 + factor2 * (node->_loyalty / 291.0) * (1.0 + (realDaysSworn / 730.0) * (ingameHoursSworn / 720.0)));
-	double receivedPercent = 0.01 * (factor1 + factor2 * (patron->_leadership / 291.0) * (1.0 + vassalFactor * (avgRealDaysVassalsSworn / 730.0) * (avgIngameHoursVassalsSworn / 720.0)));
+	double generatedPercent = 0.01 * (factor1 + factor2 * loyaltyFactor * (1.0 + realDaysSwornFactor * ingameHoursSwornFactor));
+	double receivedPercent = 0.01 * (factor1 + factor2 * leadershipFactor * (1.0 + vassalFactor * avgRealDaysVassalsSwornFactor * avgIngameHoursVassalsSwornFactor));
+
 	
 	double passup = generatedPercent * receivedPercent;
 

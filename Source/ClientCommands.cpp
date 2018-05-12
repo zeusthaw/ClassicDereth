@@ -1892,13 +1892,14 @@ CLIENT_COMMAND(setname, "[name]", "Changes the last assessed target's name.", AD
 	return false;
 }
 
+/*
 #ifndef PUBLIC_BUILD
 CLIENT_COMMAND(setmodel, "[monster]", "Changes your model to a monster.", ADMIN_ACCESS)
 {
 	pPlayer->SendText("Command disabled.", LTT_DEFAULT);
 	return false;
 
-	/*
+	
 	if (!SpawningEnabled(pPlayer))
 	{
 		return false;
@@ -1936,9 +1937,9 @@ CLIENT_COMMAND(setmodel, "[monster]", "Changes your model to a monster.", ADMIN_
 
 	pPlayer->UpdateEntity(pPlayer);
 	return false;
-	*/
-}
-#endif
+	
+} 
+#endif */
 
 /*
 CLIENT_COMMAND(invisible, "", "Go Invisible", BASIC_ACCESS)

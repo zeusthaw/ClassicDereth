@@ -40,6 +40,9 @@ public:
 	unsigned __int64 _cp_tithed = 0;
 
 	unsigned __int64 _cp_pool_to_unload = 0;
+	unsigned __int64 _unixTimeSwornAt = 0;
+	unsigned __int64 _ingameSecondsSworn = 0;
+
 
 	AllegianceTreeNodeMap _vassals;
 };
@@ -57,6 +60,7 @@ public:
 	void Tick();
 
 	void CacheInitialDataRecursively(AllegianceTreeNode *node, AllegianceTreeNode *parent);
+	void WalkTreeAndBumpOnlineTime(AllegianceTreeNode *node, int onlineSecondsDelta);
 	void CacheDataRecursively(AllegianceTreeNode *node, AllegianceTreeNode *parent);
 	void NotifyTreeRefreshRecursively(AllegianceTreeNode *node);
 
@@ -89,5 +93,5 @@ private:
 	bool ShouldRemoveAllegianceNode(AllegianceTreeNode *node);
 	void RemoveAllegianceNode(AllegianceTreeNode *node);
 
-	double m_NextSave = 0.0;
+	double m_LastSave = 0.0;
 };
