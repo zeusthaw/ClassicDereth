@@ -2818,7 +2818,24 @@ CLIENT_COMMAND(spawntreasure2, "<tier> <num>", "Spawn treasure of a specific tie
 
 	return false;
 }
+CLIENT_COMMAND(spawnsalvage, "<material> <amount> <workmanship> [numItems] [value]", "Spawn bag of salvage test", ADMIN_ACCESS)
+{
+	if (argc < 3)
+		return true;
+	string sMat = argv[0];
+	MaterialType material = g_pTreasureFactory->TranslateMaterialStringToEnumValue(sMat);
+	int amount = atoi(argv[1]);
+	int ws = atoi(argv[2]);
+	int numberofitems = 10;
+	if (argc >= 4)
+		numberofitems = atoi(argv[3]);
+	int salvagevalue = 1000;
+	if (argc >= 5)
+		salvagevalue = atoi(argv[4]);
 
+	pPlayer->SpawnSalvageBagInContainer(material, amount, ws*numberofitems, salvagevalue, numberofitems);
+	return false;
+}
 CLIENT_COMMAND(spawnwcidinv, "<name> [amount] [ptid] [shade]", "Spawn by wcid into inventory.", ADMIN_ACCESS)
 {
 	if (g_pConfig->GetValue("weapons_testing", "0") == 0)
