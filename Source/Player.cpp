@@ -21,6 +21,7 @@
 #include "SpellcastingManager.h"
 #include "Corpse.h"
 #include "House.h"
+#include "TinkerCrafting.h"
 
 #define PLAYER_SAVE_INTERVAL 180.0
 
@@ -1213,21 +1214,34 @@ int CPlayerWeenie::UseEx(CWeenieObject *pTool, CWeenieObject *pTarget)
 			break;
 		case 1: //tinkers
 		{
+			TinkerCrafting *Tinkering = NULL;
+			if (Tinkering->CalculateChance(pTool, pTarget, skillLevel))
+				success = true;
+			else
+				success = false;
+			/*
 			double toolWorkmanship = pTool->InqIntQuality(ITEM_WORKMANSHIP_INT, 0);
 			if (pTool->InqIntQuality(ITEM_TYPE_INT, 0) == ITEM_TYPE::TYPE_TINKERING_MATERIAL)
 				toolWorkmanship /= (double)pTool->InqIntQuality(NUM_ITEMS_IN_MATERIAL_INT, 1);
 			int amountOfTimesTinkered = pTarget->InqIntQuality(NUM_TIMES_TINKERED_INT, 0);
-
+			
 			double successChance = GetSkillChance(skillLevel, ((int)round(((1.0 - ((double)toolWorkmanship / 10.0)) * 400.0) + (amountOfTimesTinkered * 10)))); //made up formula.
-
-			if (Random::RollDice(0.0, 1.0) <= successChance)
+			float rando = Random::RollDice(0.0, 1.0);
+			if (rando <= successChance)
 				success = true;
 			else
 				success = false;
+			*/
 			break;
 		}
 		case 2: //imbues
 		{
+			TinkerCrafting *Tinkering = NULL;
+			if (Tinkering->CalculateChance(pTool, pTarget, skillLevel))
+				success = true;
+			else
+				success = false;
+			/*
 			double toolWorkmanship = pTool->InqIntQuality(ITEM_WORKMANSHIP_INT, 0);
 			if (pTool->InqIntQuality(ITEM_TYPE_INT, 0) == ITEM_TYPE::TYPE_TINKERING_MATERIAL)
 				toolWorkmanship /= (double)pTool->InqIntQuality(NUM_ITEMS_IN_MATERIAL_INT, 1);
@@ -1236,11 +1250,13 @@ int CPlayerWeenie::UseEx(CWeenieObject *pTool, CWeenieObject *pTarget)
 			double successChance = GetSkillChance(skillLevel, ((int)round(((1.0 - ((double)toolWorkmanship / 10.0)) * 400.0) + (amountOfTimesTinkered * 10)))); //made up formula.
 
 			successChance /= 3; //maximum success chance for imbues is 33%
-
-			if (Random::RollDice(0.0, 1.0) <= successChance)
+			float rando = Random::RollDice(0.0, 1.0);
+			SendText(csprintf("Tinker chance: %f. Roll: %f.", successChance, rando), LTT_CRAFT);
+			if (rando <= successChance)
 				success = true;
 			else
 				success = false;
+			*/
 			break;
 		}
 		default:
