@@ -458,7 +458,6 @@
     <ClCompile Include="Source\PhatSDK\Support\CombatFormulas.cpp" />
     <ClCompile Include="Source\PhatSDK\Support\Random.cpp" />
     <ClCompile Include="Source\PhatSDK\Support\RandomRange.cpp" />
-    <ClCompile Include="Source\TinkerCrafting.cpp" />
     <ClCompile Include="Source\TreasureFactory.cpp" />
     <ClCompile Include="Source\AllegianceManager.cpp" />
     <ClCompile Include="Source\Ammunition.cpp" />
@@ -645,7 +644,6 @@
     <ClInclude Include="Source\PhatSDK\Support\CombatFormulas.h" />
     <ClInclude Include="Source\PhatSDK\Support\Random.h" />
     <ClInclude Include="Source\PhatSDK\Support\RandomRange.h" />
-    <ClInclude Include="Source\TinkerCrafting.h" />
     <ClInclude Include="Source\TreasureFactory.h" />
     <ClInclude Include="Source\AllegianceManager.h" />
     <ClInclude Include="Source\Ammunition.h" />
