@@ -42,10 +42,16 @@ public:
 	virtual void NotifyWeenieErrorWithString(int error, const char *text) override;
 	virtual void NotifyInventoryFailedEvent(DWORD object_id, int error) override;
 	
+	CWeenieObject *m_pCraftingTool;
+	CWeenieObject *m_pCraftingTarget;
+
 	virtual int UseEx(CWeenieObject *pTool, CWeenieObject *pTarget);
+	virtual int UseEx(bool bConfirmed = false);
+
 	virtual bool CheckUseRequirements(int index, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget);
 	virtual void PerformUseModifications(int index, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget, CWeenieObject *pCreatedItem);
 	virtual void PerformUseModificationScript(DWORD scriptId, CCraftOperation *op, CWeenieObject *pTool, CWeenieObject *pTarget, CWeenieObject *pCreatedItem);
+	virtual int CPlayerWeenie::GetMaterialMod(int material);
 
 	void PerformSalvaging(DWORD toolId, PackableList<DWORD> items);
 	DWORD MaterialToSalvageBagId(MaterialType material);
