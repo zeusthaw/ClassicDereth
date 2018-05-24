@@ -1369,7 +1369,6 @@ int CPlayerWeenie::UseEx(bool bConfirmed)
 			{
 				difficulty = amountOfTimesTinkered * 0.5;
 			}
-			SendText(csprintf("Skill: %i.", skillLevel), LTT_CRAFT);
 			successChance = GetSkillChance(skillLevel, ((int)floor(((5 * salvageMod) + (2 * itemWorkmanship * salvageMod) - (toolWorkmanship * multiple * salvageMod / 5)) * difficulty))); //Formulas from Endy's Tinkering Calculator
 
 			if (op->_SkillCheckFormulaType == 2) // imbue
